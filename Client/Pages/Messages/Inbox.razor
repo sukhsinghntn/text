@@ -33,13 +33,20 @@ else
             }
         </aside>
         <section class="conversation">
+            <RadzenDropDown Data="@contacts" TextProperty="Name" ValueProperty="PhoneNumber"
+                            TValue="IEnumerable<string>" @bind-Value="selectedRecipients" Multiple="true"
+                            AllowClear="true" Placeholder="Select recipients" Style="margin:10px; width:calc(100% - 20px);"
+                            Change="@RecipientsChanged" />
             <div class="messages" id="messages">
                 @foreach (var m in conversation)
                 {
                     <div class="bubble @(m.Direction == "Sent" ? "outgoing" : "incoming")">@m.Body</div>
                 }
             </div>
-            <input id="messageInput" class="message-input" placeholder="Type a message" @bind="newMessage.Body" @onkeydown="HandleKeyDown" />
+            <div class="input-bar">
+                <input id="messageInput" class="message-input" placeholder="Type a message" @bind="messageBody" @onkeydown="HandleKeyDown" />
+                <RadzenButton Icon="send" Click="@SendAsync" Disabled="@(!CanSend)" Style="margin-left:5px" />
+            </div>
         </section>
     </div>
 }
@@ -108,10 +115,14 @@ else
     color: white;
     align-self: flex-end;
 }
-.message-input {
-    border: none;
+.input-bar {
+    display: flex;
     border-top: 1px solid #ccc;
     padding: 10px;
+}
+.message-input {
+    flex: 1;
+    border: none;
 }
 .message-input:focus {
     outline: none;
@@ -124,9 +135,11 @@ else
     private List<string> recipients = new();
     private List<MessageModel> conversation = new();
     private string? selectedRecipient;
-    private MessageModel newMessage = new();
+    private List<string> selectedRecipients = new();
+    private string messageBody = string.Empty;
     private List<ContactModel> contacts = new();
     private Dictionary<string, string> lastMessages = new();
+    private bool CanSend => selectedRecipients.Any() && !string.IsNullOrWhiteSpace(messageBody);
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -158,17 +171,32 @@ else
     private async Task LoadConversation(string recipient)
     {
         selectedRecipient = recipient;
+        selectedRecipients = new List<string> { recipient };
         conversation = (await MessageService.GetConversation(userName!, recipient)).ToList();
-        newMessage = new MessageModel { Recipient = recipient };
+        messageBody = string.Empty;
         if (!recipients.Contains(recipient))
         {
             recipients.Add(recipient);
         }
     }
 
+    private async Task RecipientsChanged(object value)
+    {
+        selectedRecipients = (value as IEnumerable<string>)?.ToList() ?? new List<string>();
+        if (selectedRecipients.Count == 1)
+        {
+            await LoadConversation(selectedRecipients[0]);
+        }
+        else
+        {
+            selectedRecipient = null;
+            conversation.Clear();
+        }
+    }
+
     private async Task HandleKeyDown(KeyboardEventArgs e)
     {
-        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(newMessage.Body))
+        if (e.Key == "Enter" && CanSend)
         {
             await SendAsync();
         }
@@ -176,17 +204,33 @@ else
 
     private async Task SendAsync()
     {
-        newMessage.Sender = userName!;
-        await MessageService.SendMessage(newMessage);
-        conversation.Add(new MessageModel
+        var body = messageBody;
+        foreach (var recipient in selectedRecipients)
         {
-            Sender = userName!,
-            Recipient = newMessage.Recipient,
-            Body = newMessage.Body,
-            Direction = "Sent",
-            Timestamp = DateTime.UtcNow
-        });
-        lastMessages[newMessage.Recipient] = newMessage.Body;
-        newMessage = new MessageModel { Recipient = selectedRecipient ?? string.Empty };
+            var msg = new MessageModel
+            {
+                Sender = userName!,
+                Recipient = recipient,
+                Body = body
+            };
+            await MessageService.SendMessage(msg);
+            if (recipient == selectedRecipient)
+            {
+                conversation.Add(new MessageModel
+                {
+                    Sender = userName!,
+                    Recipient = recipient,
+                    Body = body,
+                    Direction = "Sent",
+                    Timestamp = DateTime.UtcNow
+                });
+            }
+            lastMessages[recipient] = body;
+            if (!recipients.Contains(recipient))
+            {
+                recipients.Add(recipient);
+            }
+        }
+        messageBody = string.Empty;
     }
 }

@@ -34,9 +34,8 @@ else
         </aside>
         <section class="conversation">
             <RadzenDropDown Data="@contacts" TextProperty="Name" ValueProperty="PhoneNumber"
-                            TValue="IEnumerable<string>" @bind-Value="selectedRecipients" Multiple="true"
-                            AllowClear="true" Placeholder="Select recipients" Style="margin:10px; width:calc(100% - 20px);"
-                            Change="@RecipientsChanged" />
+                            TValue="IEnumerable<string>" Value="@selectedRecipients" ValueChanged="@OnRecipientsChange" Multiple="true"
+                            AllowClear="true" Placeholder="Select recipients" Style="margin:10px; width:calc(100% - 20px);" />
             <div class="messages" id="messages">
                 @foreach (var m in conversation)
                 {
@@ -180,8 +179,9 @@ else
         }
     }
 
-    private async Task RecipientsChanged()
+    private async Task OnRecipientsChange(IEnumerable<string> values)
     {
+        selectedRecipients = values.ToList();
         if (selectedRecipients.Count == 1)
         {
             await LoadConversation(selectedRecipients[0]);

@@ -4,6 +4,7 @@ using NDAProcesses.Server.Data;
 using NDAProcesses.Shared.Models;
 using NDAProcesses.Shared.Services;
 using System.Collections.Generic;
+using System.Text.Json;
 
 namespace NDAProcesses.Server.Services
 {
@@ -68,7 +69,47 @@ namespace NDAProcesses.Server.Services
             request.Headers.Add("x-api-key", apiKey);
             var response = await _httpClient.SendAsync(request);
             if (!response.IsSuccessStatusCode) return;
-            var data = await response.Content.ReadFromJsonAsync<List<MessageModel>>();
+
+            List<MessageModel>? data = null;
+            try
+            {
+                var json = await response.Content.ReadAsStringAsync();
+                if (!string.IsNullOrWhiteSpace(json))
+                {
+                    using var doc = JsonDocument.Parse(json);
+                    JsonElement root = doc.RootElement;
+                    JsonElement arrayElement = root;
+
+                    if (root.ValueKind == JsonValueKind.Object)
+                    {
+                        if (root.TryGetProperty("data", out var dataProp) && dataProp.ValueKind == JsonValueKind.Array)
+                        {
+                            arrayElement = dataProp;
+                        }
+                        else if (root.TryGetProperty("messages", out var messagesProp) && messagesProp.ValueKind == JsonValueKind.Array)
+                        {
+                            arrayElement = messagesProp;
+                        }
+                        else
+                        {
+                            return;
+                        }
+                    }
+
+                    if (arrayElement.ValueKind == JsonValueKind.Array)
+                    {
+                        data = JsonSerializer.Deserialize<List<MessageModel>>(arrayElement.GetRawText(), new JsonSerializerOptions
+                        {
+                            PropertyNameCaseInsensitive = true
+                        });
+                    }
+                }
+            }
+            catch (JsonException)
+            {
+                return;
+            }
+
             if (data == null) return;
 
             foreach (var m in data)

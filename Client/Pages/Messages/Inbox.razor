@@ -19,6 +19,7 @@ else
 {
     <div class="chat-container">
         <aside class="recipients">
+            <div class="new-chat" @onclick="StartNewChat"><span class="plus">+</span> New Message</div>
             @foreach (var r in recipients)
             {
                 var display = contacts.FirstOrDefault(c => c.PhoneNumber == r)?.Name ?? r;
@@ -33,13 +34,19 @@ else
             }
         </aside>
         <section class="conversation">
-            <RadzenDropDown Data="@contacts" TextProperty="Name" ValueProperty="PhoneNumber"
-                            TValue="IEnumerable<string>" Value="@selectedRecipients" ValueChanged="@OnRecipientsChange" Multiple="true"
-                            AllowClear="true" Placeholder="Select recipients" Style="margin:10px; width:calc(100% - 20px);" />
+            @if (isNewChat)
+            {
+                <RadzenDropDown Data="@contacts" TextProperty="Name" ValueProperty="PhoneNumber"
+                                TValue="IEnumerable<string>" Value="@selectedRecipients" ValueChanged="@OnRecipientsChange" Multiple="true"
+                                AllowClear="true" Placeholder="Select recipients" Style="margin:10px; width:calc(100% - 20px);" />
+            }
             <div class="messages" id="messages">
                 @foreach (var m in conversation)
                 {
-                    <div class="bubble @(m.Direction == "Sent" ? "outgoing" : "incoming")">@m.Body</div>
+                    <div class="message-group @(m.Direction == "Sent" ? "outgoing" : "incoming")">
+                        <div class="timestamp">@m.Timestamp.ToLocalTime().ToString("g")</div>
+                        <div class="bubble @(m.Direction == "Sent" ? "outgoing" : "incoming")">@m.Body</div>
+                    </div>
                 }
             </div>
             <div class="input-bar">
@@ -60,6 +67,15 @@ else
     width: 30%;
     border-right: 1px solid #ccc;
     overflow-y: auto;
+}
+.new-chat {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+    font-weight: bold;
+}
+.new-chat .plus {
+    margin-right: 6px;
 }
 .recipient {
     padding: 10px;
@@ -99,21 +115,35 @@ else
     padding: 10px;
     overflow-y: auto;
 }
+.message-group {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 8px;
+}
+.message-group.incoming {
+    align-items: flex-start;
+}
+.message-group.outgoing {
+    align-items: flex-end;
+}
+.timestamp {
+    font-size: 0.75rem;
+    color: #999;
+    margin-bottom: 2px;
+}
 .bubble {
     max-width: 70%;
     padding: 8px 12px;
     border-radius: 12px;
-    margin-bottom: 8px;
     white-space: pre-line;
 }
 .bubble.incoming {
-    background: #e5e5ea;
-    align-self: flex-start;
+    background: #444;
+    color: #fff;
 }
 .bubble.outgoing {
     background: #0b93f6;
-    color: white;
-    align-self: flex-end;
+    color: #fff;
 }
 .input-bar {
     display: flex;
@@ -139,6 +169,7 @@ else
     private string messageBody = string.Empty;
     private List<ContactModel> contacts = new();
     private Dictionary<string, string> lastMessages = new();
+    private bool isNewChat;
     private bool CanSend => selectedRecipients.Any() && !string.IsNullOrWhiteSpace(messageBody);
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -174,6 +205,7 @@ else
         selectedRecipients = new List<string> { recipient };
         conversation = (await MessageService.GetConversation(userName!, recipient)).ToList();
         messageBody = string.Empty;
+        isNewChat = false;
         if (!recipients.Contains(recipient))
         {
             recipients.Add(recipient);
@@ -186,6 +218,7 @@ else
         if (selectedRecipients.Count == 1)
         {
             await LoadConversation(selectedRecipients[0]);
+            isNewChat = false;
         }
         else
         {
@@ -231,6 +264,15 @@ else
                 recipients.Add(recipient);
             }
         }
+        messageBody = string.Empty;
+    }
+
+    private void StartNewChat()
+    {
+        isNewChat = true;
+        selectedRecipient = null;
+        selectedRecipients = new List<string>();
+        conversation.Clear();
         messageBody = string.Empty;
     }
 }

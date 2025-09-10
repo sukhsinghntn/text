@@ -108,6 +108,20 @@ namespace NDAProcesses.Server.Services
 
             _logger.LogInformation("TextBee send response: {Body}", responseBody);
 
+            string? externalId = null;
+            try
+            {
+                using var doc = JsonDocument.Parse(responseBody);
+                externalId = GuessId(doc.RootElement);
+            }
+            catch
+            {
+                // ignore malformed JSON and fall back to a generated ID
+            }
+
+            message.ExternalId = string.IsNullOrWhiteSpace(externalId)
+                ? Guid.NewGuid().ToString()
+                : externalId;
             message.Direction = "Sent";
             message.Timestamp = DateTime.UtcNow;
             _context.Messages.Add(message);

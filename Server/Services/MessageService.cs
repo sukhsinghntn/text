@@ -168,6 +168,8 @@ namespace NDAProcesses.Server.Services
 
         public async Task SyncInbox()
         {
+            await _context.Database.EnsureCreatedAsync();
+
             var baseUrl = _configuration["TextBee:BaseUrl"];
             var deviceId = _configuration["TextBee:DeviceId"];
             var apiKey = _configuration["TextBee:ApiKey"];
@@ -219,11 +221,14 @@ namespace NDAProcesses.Server.Services
                             else if (item.TryGetProperty("body", out var bodyProp))
                                 body = bodyProp.GetString() ?? string.Empty;
 
-                            var direction = item.TryGetProperty("direction", out var dirProp)
+                            var directionRaw = item.TryGetProperty("direction", out var dirProp)
                                 ? dirProp.GetString() ?? string.Empty
                                 : (item.TryGetProperty("type", out var typeProp)
                                     ? typeProp.GetString() ?? string.Empty
                                     : string.Empty);
+                            var direction = directionRaw.Equals("Sent", StringComparison.OrdinalIgnoreCase)
+                                ? "Sent"
+                                : "Received";
 
                             DateTime timestamp = DateTime.UtcNow;
                             if (item.TryGetProperty("timestamp", out var tsProp) && tsProp.ValueKind == JsonValueKind.String)

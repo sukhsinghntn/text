@@ -105,11 +105,10 @@ namespace NDAProcesses.Server.Services
             await _context.SaveChangesAsync();
         }
 
-        public async Task<IEnumerable<ContactModel>> GetContacts(string userName)
+        public async Task<IEnumerable<ContactModel>> GetContacts()
         {
             await _context.Database.EnsureCreatedAsync();
             return await _context.Contacts
-                .Where(c => c.Owner == userName)
                 .OrderBy(c => c.Name)
                 .ToListAsync();
         }
@@ -128,10 +127,10 @@ namespace NDAProcesses.Server.Services
             await _context.SaveChangesAsync();
         }
 
-        public async Task DeleteContact(int id, string userName)
+        public async Task DeleteContact(int id)
         {
             await _context.Database.EnsureCreatedAsync();
-            var contact = await _context.Contacts.FirstOrDefaultAsync(c => c.Id == id && c.Owner == userName);
+            var contact = await _context.Contacts.FirstOrDefaultAsync(c => c.Id == id);
             if (contact != null)
             {
                 _context.Contacts.Remove(contact);

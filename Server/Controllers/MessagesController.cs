@@ -33,10 +33,10 @@ namespace NDAProcesses.Server.Controllers
             return await _messageService.GetRecipients(userName);
         }
 
-        [HttpGet("{userName}/contacts")]
-        public async Task<IEnumerable<ContactModel>> GetContacts(string userName)
+        [HttpGet("contacts")]
+        public async Task<IEnumerable<ContactModel>> GetContacts()
         {
-            return await _messageService.GetContacts(userName);
+            return await _messageService.GetContacts();
         }
 
         [HttpPost("contacts")]
@@ -46,10 +46,10 @@ namespace NDAProcesses.Server.Controllers
             return Ok();
         }
 
-        [HttpDelete("{userName}/contacts/{id}")]
-        public async Task<IActionResult> DeleteContact(string userName, int id)
+        [HttpDelete("contacts/{id}")]
+        public async Task<IActionResult> DeleteContact(int id)
         {
-            await _messageService.DeleteContact(id, userName);
+            await _messageService.DeleteContact(id);
             return Ok();
         }
 

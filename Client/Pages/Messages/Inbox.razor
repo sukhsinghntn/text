@@ -19,9 +19,6 @@ else
 {
     <div class="chat-container">
         <aside class="recipients">
-            <RadzenDropDown @bind-Value="selectedRecipient" Data="@contacts" TextProperty="Name" ValueProperty="PhoneNumber"
-                            TValue="string" Placeholder="Select recipient" Style="width:100%; margin-bottom:10px;"
-                            Change="@(async (object value) => await OnRecipientChange(value?.ToString()))" />
             @foreach (var r in recipients)
             {
                 var display = contacts.FirstOrDefault(c => c.PhoneNumber == r)?.Name ?? r;
@@ -143,7 +140,7 @@ else
             else
             {
                 recipients = (await MessageService.GetRecipients(userName)).ToList();
-                contacts = (await MessageService.GetContacts(userName)).ToList();
+                contacts = (await MessageService.GetContacts()).ToList();
                 foreach (var r in recipients)
                 {
                     var conv = (await MessageService.GetConversation(userName, r)).ToList();
@@ -166,14 +163,6 @@ else
         if (!recipients.Contains(recipient))
         {
             recipients.Add(recipient);
-        }
-    }
-
-    private async Task OnRecipientChange(string? value)
-    {
-        if (!string.IsNullOrEmpty(value))
-        {
-            await LoadConversation(value);
         }
     }
 

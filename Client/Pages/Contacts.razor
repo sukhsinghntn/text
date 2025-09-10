@@ -18,19 +18,21 @@ else if (string.IsNullOrEmpty(userName))
 }
 else
 {
-    <RadzenButton Text="Add Contact" Icon="add_circle" Click="@AddRow" Style="margin-bottom:10px" />
-    <RadzenDataGrid @ref="grid" Data="@contacts" TItem="ContactModel" Editable="true" EditMode="DataGridEditMode.Single"
-                    RowUpdate="@OnUpdateRow" RowCreate="@OnCreateRow" RowDelete="@OnDeleteRow">
+    <RadzenButton Text="Add Contact" Icon="add_circle" Click="@AddContact" Style="margin-bottom:10px" />
+    <RadzenDataGrid Data="@contacts" TItem="ContactModel" @ref="grid">
         <Columns>
             <RadzenDataGridColumn TItem="ContactModel" Property="Name" Title="Name" />
             <RadzenDataGridColumn TItem="ContactModel" Property="PhoneNumber" Title="Phone" />
-            <RadzenDataGridCommandColumn TItem="ContactModel">
-                <EditButton />
-                <DeleteButton />
-            </RadzenDataGridCommandColumn>
+            <RadzenDataGridColumn TItem="ContactModel" Title="Actions">
+                <Template Context="contact">
+                    <RadzenButton Icon="edit" Size="ButtonSize.Small" Click="@(() => EditContact(contact))" Style="margin-right:5px" />
+                    <RadzenButton Icon="delete" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Danger" Click="@(() => OnDeleteContact(contact))" />
+                </Template>
+            </RadzenDataGridColumn>
         </Columns>
     </RadzenDataGrid>
     <RadzenNotification />
+    <RadzenDialog />
 }
 
 @code {
@@ -50,40 +52,47 @@ else
             }
             else
             {
-                contacts = (await MessageService.GetContacts(userName)).ToList();
+                contacts = (await MessageService.GetContacts()).ToList();
             }
             isLoaded = true;
             StateHasChanged();
         }
     }
 
-    async Task AddRow()
+    async Task AddContact()
     {
-        await grid!.InsertRow(new ContactModel { Owner = userName! });
+        var result = await DialogService.OpenAsync<ContactDialog>("Add Contact", new Dictionary<string, object>
+        {
+            { "Contact", new ContactModel() }
+        });
+        if (result is ContactModel contact)
+        {
+            await MessageService.SaveContact(contact);
+            contacts = (await MessageService.GetContacts()).ToList();
+            NotificationService.Notify(NotificationSeverity.Success, "Contact added");
+        }
     }
 
-    async Task OnCreateRow(ContactModel contact)
+    async Task EditContact(ContactModel contact)
     {
-        contact.Owner = userName!;
-        await MessageService.SaveContact(contact);
-        contacts = (await MessageService.GetContacts(userName!)).ToList();
-        NotificationService.Notify(NotificationSeverity.Success, "Contact added");
+        var result = await DialogService.OpenAsync<ContactDialog>("Edit Contact", new Dictionary<string, object>
+        {
+            { "Contact", contact }
+        });
+        if (result is ContactModel updated)
+        {
+            await MessageService.SaveContact(updated);
+            contacts = (await MessageService.GetContacts()).ToList();
+            NotificationService.Notify(NotificationSeverity.Success, "Contact updated");
+        }
     }
 
-    async Task OnUpdateRow(ContactModel contact)
-    {
-        contact.Owner = userName!;
-        await MessageService.SaveContact(contact);
-        contacts = (await MessageService.GetContacts(userName!)).ToList();
-        NotificationService.Notify(NotificationSeverity.Success, "Contact updated");
-    }
-
-    async Task OnDeleteRow(ContactModel contact)
+    async Task OnDeleteContact(ContactModel contact)
     {
         bool? confirm = await DialogService.Confirm("Are you sure you want to delete this contact?", "Delete Contact");
         if (confirm == true)
         {
-            await MessageService.DeleteContact(contact.Id, userName!);
+            await MessageService.DeleteContact(contact.Id);
             contacts.Remove(contact);
             NotificationService.Notify(NotificationSeverity.Success, "Contact deleted");
             await grid!.Reload();

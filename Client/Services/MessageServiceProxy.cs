@@ -38,9 +38,9 @@ namespace NDAProcesses.Client.Services
             await _httpClient.PostAsJsonAsync("api/messages", message);
         }
 
-        public async Task<IEnumerable<ContactModel>> GetContacts(string userName)
+        public async Task<IEnumerable<ContactModel>> GetContacts()
         {
-            return await _httpClient.GetFromJsonAsync<IEnumerable<ContactModel>>($"api/messages/{userName}/contacts")
+            return await _httpClient.GetFromJsonAsync<IEnumerable<ContactModel>>("api/messages/contacts")
                 ?? Enumerable.Empty<ContactModel>();
         }
 
@@ -49,9 +49,9 @@ namespace NDAProcesses.Client.Services
             await _httpClient.PostAsJsonAsync("api/messages/contacts", contact);
         }
 
-        public async Task DeleteContact(int id, string userName)
+        public async Task DeleteContact(int id)
         {
-            await _httpClient.DeleteAsync($"api/messages/{userName}/contacts/{id}");
+            await _httpClient.DeleteAsync($"api/messages/contacts/{id}");
         }
 
         public async Task ScheduleMessage(ScheduledMessageModel message)

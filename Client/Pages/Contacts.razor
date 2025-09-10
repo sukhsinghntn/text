@@ -19,7 +19,7 @@ else if (string.IsNullOrEmpty(userName))
 else
 {
     <RadzenButton Text="Add Contact" Icon="add_circle" Click="@AddRow" Style="margin-bottom:10px" />
-    <RadzenDataGrid @ref="grid" Data="@contacts" TItem="ContactModel" Editable="true" EditMode="DataGridEditMode.Popup"
+    <RadzenDataGrid @ref="grid" Data="@contacts" TItem="ContactModel" Editable="true" EditMode="DataGridEditMode.Single"
                     RowUpdate="@OnUpdateRow" RowCreate="@OnCreateRow" RowDelete="@OnDeleteRow">
         <Columns>
             <RadzenDataGridColumn TItem="ContactModel" Property="Name" Title="Name" />

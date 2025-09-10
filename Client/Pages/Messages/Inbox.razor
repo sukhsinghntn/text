@@ -19,8 +19,8 @@ else
 {
     <div class="chat-container">
         <aside class="recipients">
-            <RadzenDropDown Data="@contacts" TextProperty="Name" ValueProperty="PhoneNumber"
-                            Placeholder="Select recipient" Style="width:100%; margin-bottom:10px;"
+            <RadzenDropDown @bind-Value="selectedRecipient" Data="@contacts" TextProperty="Name" ValueProperty="PhoneNumber"
+                            TValue="string" Placeholder="Select recipient" Style="width:100%; margin-bottom:10px;"
                             Change="@OnRecipientChange" />
             @foreach (var r in recipients)
             {
@@ -169,12 +169,11 @@ else
         }
     }
 
-    private async Task OnRecipientChange(object value)
+    private async Task OnRecipientChange(string? value)
     {
-        var phone = value as string;
-        if (!string.IsNullOrEmpty(phone))
+        if (!string.IsNullOrEmpty(value))
         {
-            await LoadConversation(phone);
+            await LoadConversation(value);
         }
     }
 

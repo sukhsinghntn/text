@@ -30,6 +30,7 @@ builder.Services.AddScoped<CookieHelper>();
 builder.Services.AddScoped<IMessageService, MessageService>();
 builder.Services.AddHostedService<ScheduledMessageWorker>();
 builder.Services.AddHostedService<InboxPollerWorker>();
+builder.Services.AddSingleton<IFileLogger, FileLogger>();
 
 builder.Services.AddDbContext<MessageContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
@@ -39,6 +40,9 @@ builder.Services.AddRadzenComponents();
 builder.Services.AddHttpClient();
 builder.Services.AddHttpContextAccessor();
 var app = builder.Build();
+
+var startupLogger = app.Services.GetRequiredService<IFileLogger>();
+startupLogger.System("Application starting");
 
 using (var scope = app.Services.CreateScope())
 {

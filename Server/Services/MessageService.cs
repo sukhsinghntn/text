@@ -20,14 +20,16 @@ namespace NDAProcesses.Server.Services
         private readonly IConfiguration _configuration;
         private readonly ILogger<MessageService> _logger;
         private readonly IUserService _userService;
+        private readonly IFileLogger _fileLogger;
 
-        public MessageService(MessageContext context, IHttpClientFactory httpClientFactory, IConfiguration configuration, ILogger<MessageService> logger, IUserService userService)
+        public MessageService(MessageContext context, IHttpClientFactory httpClientFactory, IConfiguration configuration, ILogger<MessageService> logger, IUserService userService, IFileLogger fileLogger)
         {
             _context = context;
             _httpClient = httpClientFactory.CreateClient();
             _configuration = configuration;
             _logger = logger;
             _userService = userService;
+            _fileLogger = fileLogger;
         }
 
         public async Task<IEnumerable<MessageModel>> GetMessages(string userName)
@@ -98,15 +100,18 @@ namespace NDAProcesses.Server.Services
             request.Content = new StringContent(json, Encoding.UTF8, "application/json");
 
             _logger.LogInformation("Sending SMS via TextBee to {Recipient}", message.Recipient);
+            _fileLogger.TextBee($"Sending to {message.Recipient}: {message.Body}");
             var response = await _httpClient.SendAsync(request);
             var responseBody = await response.Content.ReadAsStringAsync();
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogError("TextBee send failed: {Status} {Body}", response.StatusCode, responseBody);
+                _fileLogger.System($"TextBee send failed: {response.StatusCode} {responseBody}");
                 throw new HttpRequestException($"TextBee send failed: {response.StatusCode}");
             }
 
             _logger.LogInformation("TextBee send response: {Body}", responseBody);
+            _fileLogger.TextBee($"Response: {response.StatusCode} {responseBody}");
 
             string? externalId = null;
             try
@@ -126,6 +131,7 @@ namespace NDAProcesses.Server.Services
             message.Timestamp = DateTime.UtcNow;
             _context.Messages.Add(message);
             await _context.SaveChangesAsync();
+            _fileLogger.Sql($"Saved sent message {message.ExternalId} from {message.Sender} to {message.Recipient}");
         }
 
         public async Task<IEnumerable<ContactModel>> GetContacts()
@@ -199,10 +205,11 @@ namespace NDAProcesses.Server.Services
 
             var receivedUrl = $"{baseUrl}/gateway/devices/{deviceId}/get-received-sms";
             var allUrl = $"{baseUrl}/gateway/devices/{deviceId}/messages";
-
+            _fileLogger.TextBee($"Fetching inbox from {receivedUrl}");
             var messages = await FetchMessages(receivedUrl, apiKey);
             if (!messages.Any())
             {
+                _fileLogger.TextBee("Received inbox empty, falling back to messages endpoint");
                 var all = await FetchMessages(allUrl, apiKey);
                 messages = all.Where(IsReceived);
             }
@@ -258,6 +265,7 @@ namespace NDAProcesses.Server.Services
             {
                 await _context.SaveChangesAsync();
                 _logger.LogInformation("Stored {Count} new incoming messages", saved);
+                _fileLogger.Sql($"Stored {saved} incoming messages");
             }
         }
 
@@ -282,8 +290,9 @@ namespace NDAProcesses.Server.Services
                     .Select(e => e.Clone())
                     .ToList();
             }
-            catch
+            catch (Exception ex)
             {
+                _fileLogger.System($"Fetch {url} failed: {ex.Message}");
                 return Enumerable.Empty<JsonElement>();
             }
         }

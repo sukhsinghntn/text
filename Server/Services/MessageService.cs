@@ -77,6 +77,8 @@ namespace NDAProcesses.Server.Services
             message.SenderName = user?.DisplayName ?? string.Empty;
             message.SenderDepartment = user?.Department ?? string.Empty;
 
+            message.Recipient = NormalizePhone(message.Recipient);
+
             var signature = ($"{message.SenderName}{(string.IsNullOrWhiteSpace(message.SenderDepartment) ? string.Empty : " - " + message.SenderDepartment)}").Trim();
             if (!string.IsNullOrWhiteSpace(signature))
             {
@@ -198,8 +200,8 @@ namespace NDAProcesses.Server.Services
                 if (!string.IsNullOrEmpty(msgId) && await _context.Messages.AnyAsync(m => m.ExternalId == msgId))
                     continue;
 
-                var sender = GetString(item, "from", "sender");
-                var recipient = GetString(item, "to", "recipient");
+                var sender = NormalizePhone(GetString(item, "from", "sender"));
+                var recipient = NormalizePhone(GetString(item, "to", "recipient"));
                 if (string.IsNullOrWhiteSpace(sender) || string.IsNullOrWhiteSpace(recipient))
                     continue;
 
@@ -214,10 +216,10 @@ namespace NDAProcesses.Server.Services
                     .Where(x => x.Recipient == sender && x.Direction == "Sent")
                     .OrderByDescending(x => x.Timestamp)
                     .FirstOrDefaultAsync();
-                if (lastSent != null)
-                {
-                    recipient = lastSent.Sender;
-                }
+                if (lastSent == null)
+                    continue;
+
+                recipient = lastSent.Sender;
 
                 var message = new MessageModel
                 {
@@ -246,9 +248,13 @@ namespace NDAProcesses.Server.Services
             {
                 var request = new HttpRequestMessage(HttpMethod.Get, url);
                 request.Headers.Add("x-api-key", apiKey);
+                request.Headers.Add("Accept", "application/json");
                 var response = await _httpClient.SendAsync(request);
                 if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogWarning("TextBee fetch {Url} failed: {Status}", url, response.StatusCode);
                     return Enumerable.Empty<JsonElement>();
+                }
                 var json = await response.Content.ReadAsStringAsync();
                 if (string.IsNullOrWhiteSpace(json))
                     return Enumerable.Empty<JsonElement>();
@@ -275,6 +281,16 @@ namespace NDAProcesses.Server.Services
                 }
             }
             return null;
+        }
+
+        private static string NormalizePhone(string phone)
+        {
+            if (string.IsNullOrWhiteSpace(phone))
+                return string.Empty;
+            var digits = new string(phone.Where(char.IsDigit).ToArray());
+            if (string.IsNullOrEmpty(digits))
+                return string.Empty;
+            return "+" + digits;
         }
 
         private static string GetString(JsonElement m, params string[] names)

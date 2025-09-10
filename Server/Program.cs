@@ -4,6 +4,7 @@ using NDAProcesses.Client.Services;
 using NDAProcesses.Shared.Services;
 using NDAProcesses.Server.Services;
 using Microsoft.EntityFrameworkCore;
+using NDAProcesses.Server.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,12 +27,22 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<CookieHelper>();
+builder.Services.AddScoped<IMessageService, MessageService>();
+
+builder.Services.AddDbContext<MessageContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
 
 builder.Services.AddControllers();
 builder.Services.AddRadzenComponents();
 builder.Services.AddHttpClient();
 builder.Services.AddHttpContextAccessor();
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<MessageContext>();
+    db.Database.EnsureCreated();
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

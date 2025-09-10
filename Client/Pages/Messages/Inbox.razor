@@ -1,0 +1,65 @@
+@page "/messages"
+@inject CookieHelper CookieHelper
+@inject NavigationManager NavigationManager
+@inject IMessageService MessageService
+
+<PageTitle>Messages</PageTitle>
+
+@if (!isLoaded)
+{
+    <RadzenText Text="Loading" TextStyle="Radzen.Blazor.TextStyle.H5" />
+    <RadzenProgressBarCircular ProgressBarStyle="Radzen.ProgressBarStyle.Warning" Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="Radzen.ProgressBarCircularSize.Small" />
+}
+else if (string.IsNullOrEmpty(userName))
+{
+    <RadzenAlert AlertStyle="AlertStyle.Warning">Please login to view messages.</RadzenAlert>
+}
+else
+{
+    <RadzenFieldset Legend="Send Message" Style="max-width:600px">
+        <RadzenTemplateForm Data="newMessage" TItem="MessageModel" Submit="SendAsync">
+            <RadzenLabel Text="Recipient" />
+            <RadzenTextBox Style="width:100%" @bind-Value="newMessage.Recipient" />
+            <RadzenLabel Text="Message" />
+            <RadzenTextArea Style="width:100%" @bind-Value="newMessage.Body" />
+            <RadzenButton ButtonType="ButtonType.Submit" Text="Send" ButtonStyle="ButtonStyle.Success" Style="margin-top:10px" />
+        </RadzenTemplateForm>
+    </RadzenFieldset>
+
+    <RadzenDataGrid Data="messages" TItem="MessageModel" class="rz-my-4" ShowPagingSummary="false">
+        <Columns>
+            <RadzenDataGridColumn TItem="MessageModel" Property="Timestamp" Title="Time" />
+            <RadzenDataGridColumn TItem="MessageModel" Property="Direction" Title="Direction" />
+            <RadzenDataGridColumn TItem="MessageModel" Property="Recipient" Title="To" />
+            <RadzenDataGridColumn TItem="MessageModel" Property="Sender" Title="From" />
+            <RadzenDataGridColumn TItem="MessageModel" Property="Body" Title="Message" />
+        </Columns>
+    </RadzenDataGrid>
+}
+
+@code {
+    private string? userName;
+    private bool isLoaded;
+    private List<MessageModel> messages = new();
+    private MessageModel newMessage = new MessageModel();
+
+    protected override async Task OnInitializedAsync()
+    {
+        userName = await CookieHelper.LoginStatus();
+        if (string.IsNullOrEmpty(userName))
+        {
+            NavigationManager.NavigateTo($"login?returnUrl=/messages", true);
+            return;
+        }
+        messages = (await MessageService.GetMessages(userName)).ToList();
+        isLoaded = true;
+    }
+
+    private async Task SendAsync()
+    {
+        newMessage.Sender = userName!;
+        await MessageService.SendMessage(newMessage);
+        messages = (await MessageService.GetMessages(userName!)).ToList();
+        newMessage = new MessageModel();
+    }
+}

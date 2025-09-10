@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using System.Text;
+using System.Linq;
 
 namespace NDAProcesses.Server.Services
 {
@@ -29,9 +30,36 @@ namespace NDAProcesses.Server.Services
         {
             await _context.Database.EnsureCreatedAsync();
             await SyncInbox();
+
+            var sentRecipients = _context.Messages
+                .Where(m => m.Sender == userName)
+                .Select(m => m.Recipient);
+
+            return await _context.Messages
+                .Where(m => m.Sender == userName || (sentRecipients.Contains(m.Sender) && m.Direction != "Sent"))
+                .OrderBy(m => m.Timestamp)
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<MessageModel>> GetConversation(string userName, string recipient)
+        {
+            await _context.Database.EnsureCreatedAsync();
+            await SyncInbox();
+
+            return await _context.Messages
+                .Where(m => (m.Sender == userName && m.Recipient == recipient) ||
+                            (m.Sender == recipient && m.Recipient == userName))
+                .OrderBy(m => m.Timestamp)
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<string>> GetRecipients(string userName)
+        {
+            await _context.Database.EnsureCreatedAsync();
             return await _context.Messages
                 .Where(m => m.Sender == userName || m.Recipient == userName)
-                .OrderByDescending(m => m.Timestamp)
+                .Select(m => m.Sender == userName ? m.Recipient : m.Sender)
+                .Distinct()
                 .ToListAsync();
         }
 
@@ -42,6 +70,12 @@ namespace NDAProcesses.Server.Services
             var deviceId = _configuration["TextBee:DeviceId"];
             var apiKey = _configuration["TextBee:ApiKey"];
             var url = $"{baseUrl}/gateway/devices/{deviceId}/send-sms";
+
+            var signature = ($"{message.SenderName}{(string.IsNullOrWhiteSpace(message.SenderDepartment) ? string.Empty : " - " + message.SenderDepartment)}").Trim();
+            if (!string.IsNullOrWhiteSpace(signature))
+            {
+                message.Body = $"{message.Body}\n\n{signature}";
+            }
 
             var payload = new
             {
@@ -69,6 +103,57 @@ namespace NDAProcesses.Server.Services
             message.Timestamp = DateTime.UtcNow;
             _context.Messages.Add(message);
             await _context.SaveChangesAsync();
+        }
+
+        public async Task<IEnumerable<ContactModel>> GetContacts(string userName)
+        {
+            await _context.Database.EnsureCreatedAsync();
+            return await _context.Contacts
+                .Where(c => c.Owner == userName)
+                .OrderBy(c => c.Name)
+                .ToListAsync();
+        }
+
+        public async Task SaveContact(ContactModel contact)
+        {
+            await _context.Database.EnsureCreatedAsync();
+            if (contact.Id == 0)
+            {
+                _context.Contacts.Add(contact);
+            }
+            else
+            {
+                _context.Contacts.Update(contact);
+            }
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task ScheduleMessage(ScheduledMessageModel message)
+        {
+            await _context.Database.EnsureCreatedAsync();
+            _context.ScheduledMessages.Add(message);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task<IEnumerable<ScheduledMessageModel>> GetScheduledMessages(string userName)
+        {
+            await _context.Database.EnsureCreatedAsync();
+            return await _context.ScheduledMessages
+                .Where(m => m.Sender == userName && !m.Sent)
+                .OrderBy(m => m.ScheduledFor)
+                .ToListAsync();
+        }
+
+        public async Task CancelScheduledMessage(int id, string userName)
+        {
+            await _context.Database.EnsureCreatedAsync();
+            var msg = await _context.ScheduledMessages
+                .FirstOrDefaultAsync(m => m.Id == id && m.Sender == userName && !m.Sent);
+            if (msg != null)
+            {
+                _context.ScheduledMessages.Remove(msg);
+                await _context.SaveChangesAsync();
+            }
         }
 
         public async Task SyncInbox()

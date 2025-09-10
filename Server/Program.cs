@@ -28,6 +28,7 @@ builder.Services.AddCors(options =>
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<CookieHelper>();
 builder.Services.AddScoped<IMessageService, MessageService>();
+builder.Services.AddHostedService<ScheduledMessageWorker>();
 
 builder.Services.AddDbContext<MessageContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("Default")));

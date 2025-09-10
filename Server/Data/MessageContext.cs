@@ -10,5 +10,7 @@ namespace NDAProcesses.Server.Data
         }
 
         public DbSet<MessageModel> Messages => Set<MessageModel>();
+        public DbSet<ContactModel> Contacts => Set<ContactModel>();
+        public DbSet<ScheduledMessageModel> ScheduledMessages => Set<ScheduledMessageModel>();
     }
 }

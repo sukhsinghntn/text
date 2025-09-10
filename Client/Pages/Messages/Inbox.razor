@@ -16,32 +16,87 @@ else if (string.IsNullOrEmpty(userName))
 }
 else
 {
-    <RadzenFieldset Legend="Send Message" Style="max-width:600px">
-        <RadzenTemplateForm Data="newMessage" TItem="MessageModel" Submit="SendAsync">
-            <RadzenLabel Text="Recipient" />
-            <RadzenTextBox Style="width:100%" @bind-Value="newMessage.Recipient" />
-            <RadzenLabel Text="Message" />
-            <RadzenTextArea Style="width:100%" @bind-Value="newMessage.Body" />
-            <RadzenButton ButtonType="ButtonType.Submit" Text="Send" ButtonStyle="ButtonStyle.Success" Style="margin-top:10px" />
-        </RadzenTemplateForm>
-    </RadzenFieldset>
+    <div class="row">
+        <div class="col-3">
+            <ul class="list-group">
+                @foreach (var r in recipients)
+                {
+                    var display = contacts.FirstOrDefault(c => c.PhoneNumber == r)?.Name ?? r;
+                    <li class="list-group-item @(r == selectedRecipient ? "active" : string.Empty)" @onclick="(() => LoadConversation(r))">@display</li>
+                }
+            </ul>
+        </div>
+        <div class="col-9">
+            <div style="height:300px; overflow-y:auto; border:1px solid #ccc; padding:10px;">
+                @foreach (var m in conversation)
+                {
+                    <div class="@(m.Direction == "Sent" ? "text-end" : "text-start")">
+                        <span class="badge bg-secondary">@((m.Direction == "Sent") ? "You" : contacts.FirstOrDefault(c => c.PhoneNumber == m.Sender)?.Name ?? m.Sender)</span>
+                        <div>@m.Body</div>
+                    </div>
+                }
+            </div>
+            <RadzenTemplateForm Data="newMessage" TItem="MessageModel" Submit="SendAsync" Style="margin-top:10px">
+                @if (string.IsNullOrEmpty(selectedRecipient))
+                {
+                    <RadzenLabel Text="Recipient" />
+                    <RadzenTextBox Style="width:100%" @bind-Value="newMessage.Recipient" />
+                }
+                <RadzenLabel Text="Message" />
+                <RadzenTextArea Style="width:100%" @bind-Value="newMessage.Body" />
+                <RadzenLabel Text="Your Name" />
+                <RadzenTextBox Style="width:100%" @bind-Value="newMessage.SenderName" />
+                <RadzenLabel Text="Department" />
+                <RadzenTextBox Style="width:100%" @bind-Value="newMessage.SenderDepartment" />
+                <RadzenLabel Text="Schedule (optional)" />
+                <RadzenDatePicker Style="width:100%" @bind-Value="scheduleTime" DateFormat="yyyy-MM-dd HH:mm" />
+                <RadzenButton ButtonType="ButtonType.Submit" Text="@(scheduleTime.HasValue ? "Schedule" : "Send")" ButtonStyle="ButtonStyle.Success" Style="margin-top:10px" />
+            </RadzenTemplateForm>
+        </div>
+    </div>
 
-    <RadzenDataGrid Data="messages" TItem="MessageModel" class="rz-my-4" ShowPagingSummary="false">
-        <Columns>
-            <RadzenDataGridColumn TItem="MessageModel" Property="Timestamp" Title="Time" />
-            <RadzenDataGridColumn TItem="MessageModel" Property="Direction" Title="Direction" />
-            <RadzenDataGridColumn TItem="MessageModel" Property="Recipient" Title="To" />
-            <RadzenDataGridColumn TItem="MessageModel" Property="Sender" Title="From" />
-            <RadzenDataGridColumn TItem="MessageModel" Property="Body" Title="Message" />
-        </Columns>
-    </RadzenDataGrid>
+    <div class="row mt-3">
+        <div class="col-6">
+            <RadzenFieldset Legend="Add Contact">
+                <RadzenTemplateForm Data="newContact" TItem="ContactModel" Submit="AddContact">
+                    <RadzenLabel Text="Name" />
+                    <RadzenTextBox Style="width:100%" @bind-Value="newContact.Name" />
+                    <RadzenLabel Text="Phone" />
+                    <RadzenTextBox Style="width:100%" @bind-Value="newContact.PhoneNumber" />
+                    <RadzenButton ButtonType="ButtonType.Submit" Text="Save" Style="margin-top:10px" />
+                </RadzenTemplateForm>
+            </RadzenFieldset>
+        </div>
+        <div class="col-6">
+            <RadzenFieldset Legend="Scheduled Messages">
+                <RadzenDataGrid Data="scheduled" TItem="ScheduledMessageModel" ShowPagingSummary="false">
+                    <Columns>
+                        <RadzenDataGridColumn TItem="ScheduledMessageModel" Property="Recipient" Title="To" />
+                        <RadzenDataGridColumn TItem="ScheduledMessageModel" Property="Body" Title="Message" />
+                        <RadzenDataGridColumn TItem="ScheduledMessageModel" Property="ScheduledFor" Title="When" />
+                        <RadzenDataGridColumn TItem="ScheduledMessageModel" Filterable="false" Sortable="false" TextAlign="TextAlign.Center">
+                            <Template Context="item">
+                                <RadzenButton Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Danger" Text="Cancel" Click="@(() => CancelSchedule(item.Id))" />
+                            </Template>
+                        </RadzenDataGridColumn>
+                    </Columns>
+                </RadzenDataGrid>
+            </RadzenFieldset>
+        </div>
+    </div>
 }
 
 @code {
     private string? userName;
     private bool isLoaded;
-    private List<MessageModel> messages = new();
+    private List<string> recipients = new();
+    private List<MessageModel> conversation = new();
+    private string? selectedRecipient;
     private MessageModel newMessage = new MessageModel();
+    private List<ContactModel> contacts = new();
+    private ContactModel newContact = new ContactModel();
+    private List<ScheduledMessageModel> scheduled = new();
+    private DateTime? scheduleTime;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -54,18 +109,63 @@ else
             }
             else
             {
-                messages = (await MessageService.GetMessages(userName)).ToList();
+                recipients = (await MessageService.GetRecipients(userName)).ToList();
+                contacts = (await MessageService.GetContacts(userName)).ToList();
+                scheduled = (await MessageService.GetScheduledMessages(userName)).ToList();
             }
             isLoaded = true;
             StateHasChanged();
         }
     }
 
+    private async Task LoadConversation(string recipient)
+    {
+        selectedRecipient = recipient;
+        conversation = (await MessageService.GetConversation(userName!, recipient)).ToList();
+        newMessage.Recipient = recipient;
+    }
+
     private async Task SendAsync()
     {
         newMessage.Sender = userName!;
-        await MessageService.SendMessage(newMessage);
-        messages = (await MessageService.GetMessages(userName!)).ToList();
-        newMessage = new MessageModel();
+        if (scheduleTime.HasValue && scheduleTime.Value > DateTime.UtcNow)
+        {
+            var sched = new ScheduledMessageModel
+            {
+                Sender = userName!,
+                SenderName = newMessage.SenderName,
+                SenderDepartment = newMessage.SenderDepartment,
+                Recipient = newMessage.Recipient,
+                Body = newMessage.Body,
+                ScheduledFor = scheduleTime.Value
+            };
+            await MessageService.ScheduleMessage(sched);
+            scheduled = (await MessageService.GetScheduledMessages(userName!)).ToList();
+        }
+        else
+        {
+            await MessageService.SendMessage(newMessage);
+            conversation = (await MessageService.GetConversation(userName!, newMessage.Recipient)).ToList();
+            if (!recipients.Contains(newMessage.Recipient))
+            {
+                recipients.Add(newMessage.Recipient);
+            }
+        }
+        newMessage = new MessageModel { Recipient = selectedRecipient ?? string.Empty };
+        scheduleTime = null;
+    }
+
+    private async Task AddContact()
+    {
+        newContact.Owner = userName!;
+        await MessageService.SaveContact(newContact);
+        contacts = (await MessageService.GetContacts(userName!)).ToList();
+        newContact = new ContactModel();
+    }
+
+    private async Task CancelSchedule(int id)
+    {
+        await MessageService.CancelScheduledMessage(id, userName!);
+        scheduled = (await MessageService.GetScheduledMessages(userName!)).ToList();
     }
 }

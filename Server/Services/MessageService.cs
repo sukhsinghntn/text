@@ -253,7 +253,9 @@ namespace NDAProcesses.Server.Services
                 if (string.IsNullOrWhiteSpace(json))
                     return Enumerable.Empty<JsonElement>();
                 using var doc = JsonDocument.Parse(json);
-                return NormalizeMessages(doc.RootElement).ToList();
+                return NormalizeMessages(doc.RootElement)
+                    .Select(e => e.Clone())
+                    .ToList();
             }
             catch
             {

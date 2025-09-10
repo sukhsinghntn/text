@@ -21,7 +21,7 @@ else
         <aside class="recipients">
             <RadzenDropDown @bind-Value="selectedRecipient" Data="@contacts" TextProperty="Name" ValueProperty="PhoneNumber"
                             TValue="string" Placeholder="Select recipient" Style="width:100%; margin-bottom:10px;"
-                            Change="@OnRecipientChange" />
+                            Change="@(async (object value) => await OnRecipientChange(value?.ToString()))" />
             @foreach (var r in recipients)
             {
                 var display = contacts.FirstOrDefault(c => c.PhoneNumber == r)?.Name ?? r;

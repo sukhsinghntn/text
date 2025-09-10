@@ -180,9 +180,8 @@ else
         }
     }
 
-    private async Task RecipientsChanged(object value)
+    private async Task RecipientsChanged()
     {
-        selectedRecipients = (value as IEnumerable<string>)?.ToList() ?? new List<string>();
         if (selectedRecipients.Count == 1)
         {
             await LoadConversation(selectedRecipients[0]);

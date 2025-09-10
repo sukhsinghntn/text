@@ -219,8 +219,11 @@ namespace NDAProcesses.Server.Services
                             else if (item.TryGetProperty("body", out var bodyProp))
                                 body = bodyProp.GetString() ?? string.Empty;
 
-                            var direction = item.TryGetProperty("direction", out var dirProp) ? dirProp.GetString() ?? string.Empty :
-                                            item.TryGetProperty("type", out var typeProp) ? typeProp.GetString() ?? string.Empty;
+                            var direction = item.TryGetProperty("direction", out var dirProp)
+                                ? dirProp.GetString() ?? string.Empty
+                                : (item.TryGetProperty("type", out var typeProp)
+                                    ? typeProp.GetString() ?? string.Empty
+                                    : string.Empty);
 
                             DateTime timestamp = DateTime.UtcNow;
                             if (item.TryGetProperty("timestamp", out var tsProp) && tsProp.ValueKind == JsonValueKind.String)

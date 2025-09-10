@@ -17,13 +17,15 @@ namespace NDAProcesses.Server.Services
         private readonly HttpClient _httpClient;
         private readonly IConfiguration _configuration;
         private readonly ILogger<MessageService> _logger;
+        private readonly IUserService _userService;
 
-        public MessageService(MessageContext context, IHttpClientFactory httpClientFactory, IConfiguration configuration, ILogger<MessageService> logger)
+        public MessageService(MessageContext context, IHttpClientFactory httpClientFactory, IConfiguration configuration, ILogger<MessageService> logger, IUserService userService)
         {
             _context = context;
             _httpClient = httpClientFactory.CreateClient();
             _configuration = configuration;
             _logger = logger;
+            _userService = userService;
         }
 
         public async Task<IEnumerable<MessageModel>> GetMessages(string userName)
@@ -70,6 +72,9 @@ namespace NDAProcesses.Server.Services
             var deviceId = _configuration["TextBee:DeviceId"];
             var apiKey = _configuration["TextBee:ApiKey"];
             var url = $"{baseUrl}/gateway/devices/{deviceId}/send-sms";
+            var user = await _userService.GetUserData(message.Sender);
+            message.SenderName = user?.DisplayName ?? string.Empty;
+            message.SenderDepartment = user?.Department ?? string.Empty;
 
             var signature = ($"{message.SenderName}{(string.IsNullOrWhiteSpace(message.SenderDepartment) ? string.Empty : " - " + message.SenderDepartment)}").Trim();
             if (!string.IsNullOrWhiteSpace(signature))
@@ -242,6 +247,18 @@ namespace NDAProcesses.Server.Services
 
                             if (string.IsNullOrWhiteSpace(sender) || string.IsNullOrWhiteSpace(recipient))
                                 continue;
+
+                            if (direction == "Sent")
+                                continue;
+
+                            var lastSent = await _context.Messages
+                                .Where(x => x.Recipient == sender && x.Direction == "Sent")
+                                .OrderByDescending(x => x.Timestamp)
+                                .FirstOrDefaultAsync();
+                            if (lastSent != null)
+                            {
+                                recipient = lastSent.Sender;
+                            }
 
                             list.Add(new MessageModel
                             {

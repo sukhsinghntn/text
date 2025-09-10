@@ -276,23 +276,44 @@ namespace NDAProcesses.Server.Services
                 var request = new HttpRequestMessage(HttpMethod.Get, url);
                 request.Headers.Add("x-api-key", apiKey);
                 request.Headers.Add("Accept", "application/json");
+
                 var response = await _httpClient.SendAsync(request);
+                var body = await response.Content.ReadAsStringAsync();
+                _fileLogger.TextBee($"Fetch {url} -> {(int)response.StatusCode} {response.StatusCode}");
+
                 if (!response.IsSuccessStatusCode)
                 {
-                    _logger.LogWarning("TextBee fetch {Url} failed: {Status}", url, response.StatusCode);
+                    _logger.LogWarning("TextBee fetch {Url} failed: {Status} {Body}", url, response.StatusCode, body);
+                    _fileLogger.System($"TextBee fetch {url} failed: {(int)response.StatusCode} {response.StatusCode} {body}");
                     return Enumerable.Empty<JsonElement>();
                 }
-                var json = await response.Content.ReadAsStringAsync();
-                if (string.IsNullOrWhiteSpace(json))
+
+                if (string.IsNullOrWhiteSpace(body))
+                {
+                    _fileLogger.System($"TextBee fetch {url} returned empty body");
                     return Enumerable.Empty<JsonElement>();
-                using var doc = JsonDocument.Parse(json);
-                return NormalizeMessages(doc.RootElement)
-                    .Select(e => e.Clone())
-                    .ToList();
+                }
+
+                try
+                {
+                    using var doc = JsonDocument.Parse(body);
+                    var list = NormalizeMessages(doc.RootElement)
+                        .Select(e => e.Clone())
+                        .ToList();
+                    _fileLogger.TextBee($"Parsed {list.Count} messages from {url}");
+                    return list;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "TextBee parse failure from {Url}", url);
+                    _fileLogger.System($"Parse failure from {url}: {ex.Message} Body: {body}");
+                    return Enumerable.Empty<JsonElement>();
+                }
             }
             catch (Exception ex)
             {
-                _fileLogger.System($"Fetch {url} failed: {ex.Message}");
+                _logger.LogError(ex, "TextBee fetch {Url} threw exception", url);
+                _fileLogger.System($"Fetch {url} threw {ex.GetType().Name}: {ex.Message}");
                 return Enumerable.Empty<JsonElement>();
             }
         }

@@ -43,16 +43,22 @@ else
     private List<MessageModel> messages = new();
     private MessageModel newMessage = new MessageModel();
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        userName = await CookieHelper.LoginStatus();
-        if (string.IsNullOrEmpty(userName))
+        if (firstRender)
         {
-            NavigationManager.NavigateTo($"login?returnUrl=/messages", true);
-            return;
+            userName = await CookieHelper.LoginStatus();
+            if (string.IsNullOrEmpty(userName))
+            {
+                NavigationManager.NavigateTo("login?returnUrl=/messages", true);
+            }
+            else
+            {
+                messages = (await MessageService.GetMessages(userName)).ToList();
+            }
+            isLoaded = true;
+            StateHasChanged();
         }
-        messages = (await MessageService.GetMessages(userName)).ToList();
-        isLoaded = true;
     }
 
     private async Task SendAsync()

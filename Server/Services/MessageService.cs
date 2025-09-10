@@ -9,6 +9,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using System.Text;
 using System.Linq;
+using System.Security.Cryptography;
 
 namespace NDAProcesses.Server.Services
 {
@@ -196,10 +197,6 @@ namespace NDAProcesses.Server.Services
 
             foreach (var item in messages)
             {
-                var msgId = GuessId(item);
-                if (!string.IsNullOrEmpty(msgId) && await _context.Messages.AnyAsync(m => m.ExternalId == msgId))
-                    continue;
-
                 var sender = NormalizePhone(GetString(item, "from", "sender"));
                 var recipient = NormalizePhone(GetString(item, "to", "recipient"));
                 if (string.IsNullOrWhiteSpace(sender) || string.IsNullOrWhiteSpace(recipient))
@@ -210,6 +207,14 @@ namespace NDAProcesses.Server.Services
                 var timestamp = DateTime.UtcNow;
                 if (!string.IsNullOrWhiteSpace(tsString))
                     DateTime.TryParse(tsString, out timestamp);
+
+                var msgId = GuessId(item);
+                var externalId = string.IsNullOrWhiteSpace(msgId)
+                    ? ComputeHash(sender, recipient, body, timestamp)
+                    : msgId;
+
+                if (await _context.Messages.AnyAsync(m => m.ExternalId == externalId))
+                    continue;
 
                 // Map to the internal user who last sent to this number
                 var lastSent = await _context.Messages
@@ -228,7 +233,7 @@ namespace NDAProcesses.Server.Services
                     Body = body,
                     Direction = "Received",
                     Timestamp = timestamp,
-                    ExternalId = msgId ?? string.Empty
+                    ExternalId = externalId
                 };
 
                 _context.Messages.Add(message);
@@ -307,6 +312,14 @@ namespace NDAProcesses.Server.Services
         {
             var dir = GetString(m, "direction", "type").ToLowerInvariant();
             return dir.Contains("recv") || dir == "inbound" || dir == "received";
+        }
+
+        private static string ComputeHash(string sender, string recipient, string body, DateTime timestamp)
+        {
+            var raw = $"{sender}|{recipient}|{body}|{timestamp:o}";
+            var bytes = Encoding.UTF8.GetBytes(raw);
+            var hash = SHA256.HashData(bytes);
+            return Convert.ToHexString(hash);
         }
 
         private static IEnumerable<JsonElement> NormalizeMessages(JsonElement root)

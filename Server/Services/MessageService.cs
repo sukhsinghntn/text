@@ -350,6 +350,8 @@ namespace NDAProcesses.Server.Services
             var digits = new string(phone.Where(char.IsDigit).ToArray());
             if (string.IsNullOrEmpty(digits))
                 return string.Empty;
+            if (digits.Length == 10)
+                digits = "1" + digits;
             return "+" + digits;
         }
 

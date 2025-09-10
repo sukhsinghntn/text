@@ -1,9 +1,12 @@
 @page "/messages"
 @using Microsoft.AspNetCore.Components.Web
 @using Radzen
+@using System.Linq
+@using System.Timers
 @inject CookieHelper CookieHelper
 @inject NavigationManager NavigationManager
 @inject IMessageService MessageService
+@implements IDisposable
 
 <PageTitle>Messages</PageTitle>
 
@@ -170,6 +173,7 @@ else
     private List<ContactModel> contacts = new();
     private Dictionary<string, string> lastMessages = new();
     private bool isNewChat;
+    private Timer? refreshTimer;
     private bool CanSend => selectedRecipients.Any() && !string.IsNullOrWhiteSpace(messageBody);
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -183,16 +187,12 @@ else
             }
             else
             {
-                recipients = (await MessageService.GetRecipients(userName)).ToList();
                 contacts = (await MessageService.GetContacts()).ToList();
-                foreach (var r in recipients)
-                {
-                    var conv = (await MessageService.GetConversation(userName, r)).ToList();
-                    if (conv.Any())
-                    {
-                        lastMessages[r] = conv.Last().Body;
-                    }
-                }
+                await RefreshAsync();
+                refreshTimer = new Timer(5000);
+                refreshTimer.Elapsed += async (_, __) => await InvokeAsync(RefreshAsync);
+                refreshTimer.AutoReset = true;
+                refreshTimer.Start();
             }
             isLoaded = true;
             StateHasChanged();
@@ -203,13 +203,9 @@ else
     {
         selectedRecipient = recipient;
         selectedRecipients = new List<string> { recipient };
-        conversation = (await MessageService.GetConversation(userName!, recipient)).ToList();
+        await RefreshAsync();
         messageBody = string.Empty;
         isNewChat = false;
-        if (!recipients.Contains(recipient))
-        {
-            recipients.Add(recipient);
-        }
     }
 
     private async Task OnRecipientsChange(IEnumerable<string> values)
@@ -247,24 +243,9 @@ else
                 Body = body
             };
             await MessageService.SendMessage(msg);
-            if (recipient == selectedRecipient)
-            {
-                conversation.Add(new MessageModel
-                {
-                    Sender = userName!,
-                    Recipient = recipient,
-                    Body = body,
-                    Direction = "Sent",
-                    Timestamp = DateTime.UtcNow
-                });
-            }
-            lastMessages[recipient] = body;
-            if (!recipients.Contains(recipient))
-            {
-                recipients.Add(recipient);
-            }
         }
         messageBody = string.Empty;
+        await RefreshAsync();
     }
 
     private void StartNewChat()
@@ -274,5 +255,40 @@ else
         selectedRecipients = new List<string>();
         conversation.Clear();
         messageBody = string.Empty;
+    }
+
+    private async Task RefreshAsync()
+    {
+        if (string.IsNullOrEmpty(userName))
+            return;
+
+        var messages = (await MessageService.GetMessages(userName)).ToList();
+        recipients = messages
+            .Select(m => m.Sender == userName ? m.Recipient : m.Sender)
+            .Where(r => !string.IsNullOrEmpty(r))
+            .Distinct()
+            .ToList();
+
+        lastMessages.Clear();
+        foreach (var r in recipients)
+        {
+            var conv = messages
+                .Where(m => (m.Sender == userName && m.Recipient == r) || (m.Sender == r && m.Recipient == userName))
+                .OrderBy(m => m.Timestamp)
+                .ToList();
+            if (conv.Any())
+            {
+                lastMessages[r] = conv.Last().Body;
+                if (selectedRecipient == r)
+                    conversation = conv;
+            }
+        }
+
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        refreshTimer?.Dispose();
     }
 }

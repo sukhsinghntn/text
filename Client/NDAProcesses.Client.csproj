@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+  <PropertyGroup>
+    <NoWarn>CS0168,CS1998,BL9993,CS0649,CS0436,0436</NoWarn>
+    <NuGetAuditMode>direct</NuGetAuditMode>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <StaticWebAssetProjectMode>Default</StaticWebAssetProjectMode>
+    <ServiceWorkerAssetsManifest>service-worker-assets.js</ServiceWorkerAssetsManifest>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
+    <PackageReference Include="System.Linq.Dynamic.Core" Version="1.4.9" />
+    <PackageReference Include="System.Net.Http.Json" Version="8.0.0" />
+    <PackageReference Include="Radzen.Blazor" Version="*" />
+    <Compile Include="../Server/Models/**/*.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Remove="Pages\CCTable.razor" />
+  </ItemGroup>
+  <ItemGroup>
+    <ServiceWorker Include="../Server/wwwroot/service-worker.js" PublishedContent="../Server/wwwroot/service-worker.published.js" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\NdaProcesses.Shared\NDAProcesses.Shared.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <UpToDateCheckInput Remove="Pages\CCTable.razor" />
+  </ItemGroup>
+  <ItemGroup>
+    <_ContentIncludedByDefault Remove="Pages\CCTable.razor" />
+  </ItemGroup>
+</Project>

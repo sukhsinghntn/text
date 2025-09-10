@@ -1,0 +1,109 @@
+@page "/login"
+@using Radzen
+@using Microsoft.AspNetCore.Components.Web
+
+<PageTitle>Login</PageTitle>
+
+@if (isLoading)
+{
+    <RadzenRow>
+        <RadzenText Text="Loading" TextStyle="Radzen.Blazor.TextStyle.H5" />
+        <RadzenProgressBarCircular ProgressBarStyle="Radzen.ProgressBarStyle.Warning" Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="Radzen.ProgressBarCircularSize.Small" />
+    </RadzenRow>
+}
+else
+{
+    <RadzenTemplateForm Data="@user" TItem="UserModel" Submit="@OnSubmit">
+        <RadzenCard Style="width:400px;margin:auto;margin-top:100px;">
+            <RadzenText Text="Login" TextStyle="Radzen.Blazor.TextStyle.DisplayH3" Style="text-align: center" />
+            <RadzenFieldset Legend="Login Information" Style="border: 1px none #45565e">
+                <RadzenLabel Text="Username" Component="RadzenTextBox1" />
+                <RadzenTextBox @bind-Value="user.UserName" Style="width:100%;" Name="Username" />
+                <RadzenLabel Text="Password" Component="RadzenPassword1" />
+                <RadzenFormField Style="width:100%; margin-top:-8px;">
+                    <ChildContent>
+                        <RadzenPassword @bind-Value="user.Password" Style="width:100%;" Name="Password" Visible="@passwordVisible" />
+                        <RadzenTextBox @bind-Value="user.Password" Name="Password" Visible="@(!passwordVisible)" />
+                    </ChildContent>
+                    <End>
+                        <RadzenButton Icon="@(passwordVisible ? "visibility" : "visibility_off")"
+                                      @onmousedown="ShowPassword"
+                                      @onmouseup="HidePassword"
+                                      @onmouseleave="HidePassword"
+                                      Variant="Variant.Text"
+                                      Size="ButtonSize.Small"
+                                      IconColor="@Colors.Warning" />
+                    </End>
+                </RadzenFormField>
+            </RadzenFieldset>
+            <RadzenAlert AlertStyle="AlertStyle.Danger" Variant="Variant.Flat" @bind-Visible=errorMessage Shade="Shade.Lighter">
+                Invalid Username or Password.
+            </RadzenAlert>
+            <RadzenButton ButtonType="ButtonType.Submit" IsBusy="@busy" ButtonStyle="ButtonStyle.Success" Text="Login" Style="width: 70%; margin-left: 15%; margin-right: 15%" />
+        </RadzenCard>
+    </RadzenTemplateForm>
+}
+
+@code {
+    private UserModel user = new UserModel();
+    private bool errorMessage = false;
+    private bool busy;
+    private bool isLoading = true;
+    bool passwordVisible = true;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Hide loading spinner after the initial render
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task OnSubmit()
+    {
+        if (string.IsNullOrEmpty(user.UserName) || string.IsNullOrEmpty(user.Password))
+        {
+            errorMessage = true;
+            return;
+        }
+        user.UserName = user.UserName?.Trim();
+
+        user.Password = user.Password?.Trim();
+
+        busy = true;
+        StateHasChanged();
+
+        // Authenticate user
+
+        if (await UserService.ValidateUser(user))
+        {
+            // Set cookie for user identification
+            await CookieHelper.LoginUser(user.UserName);
+
+            // Get the returnUrl query parameter
+            var uri = new Uri(NavigationManager.Uri);
+            var returnUrl = uri.Query.Contains("returnUrl") ? uri.Query.Substring(uri.Query.IndexOf("returnUrl") + 10) : "/";
+            returnUrl = Uri.UnescapeDataString(returnUrl);
+
+            // Navigate to the returnUrl or home page
+            NavigationManager.NavigateTo(returnUrl, true);
+        }
+        else
+        {
+            errorMessage = true;
+        }
+
+        busy = false;
+    }
+    private void ShowPassword()
+    {
+        passwordVisible = false; // Reveal password
+    }
+
+    private void HidePassword()
+    {
+        passwordVisible = true; // Hide password
+    }
+}

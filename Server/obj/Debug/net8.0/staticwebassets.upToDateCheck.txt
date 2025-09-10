@@ -1,0 +1,12 @@
+wwwroot\css\site.css
+wwwroot\favicon.ico
+wwwroot\icon-512.png
+wwwroot\images\login.jpg
+wwwroot\images\logo.ico
+wwwroot\images\logo.png
+wwwroot\images\logo-login.png
+wwwroot\images\NDA_TRANS_WHITE.png
+wwwroot\js\cookieHelper.js
+wwwroot\manifest.json
+wwwroot\service-worker.js
+wwwroot\service-worker.published.js

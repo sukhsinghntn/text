@@ -1,0 +1,151 @@
+@inherits LayoutComponentBase
+<RadzenComponents />
+
+<!-- Define the overall layout of the page using RadzenLayout -->
+<RadzenLayout style="grid-template-areas: 'rz-sidebar rz-header' 'rz-sidebar rz-body';" class="rz-responsive-layout">
+
+    <!-- Header section of the layout -->
+    <RadzenHeader>
+        <RadzenRow JustifyContent="JustifyContent.Start" AlignItems="AlignItems.Center" Gap="0">
+
+            <!-- Column for the sidebar toggle button -->
+            <RadzenColumn Size="2">
+                <RadzenSidebarToggle Click="@SidebarToggleClick" Icon="@sidebarToggleIcon"></RadzenSidebarToggle>
+            </RadzenColumn>
+
+            <!-- Column for user-related actions -->
+            <RadzenColumn Size="10">
+                <RadzenStack AlignItems="AlignItems.Center" Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End">
+                    @if (waitingforuserload)
+                    {
+                        @if (username is null)
+                        {
+                            <RadzenButton Icon="login" Click="@DelUser" Text="Login" ButtonStyle="ButtonStyle.Success" Style="border-radius: 4px; margin-right: 10px; margin-left: 15px"></RadzenButton>
+                        }
+                        else
+                        {
+                            <RadzenIcon Icon="flutter_dash" Style="margin-right: 5px; font-size: 38px;" />
+                            <RadzenText Text=@(string.IsNullOrEmpty(username) ? "" : username) TextStyle="Radzen.Blazor.TextStyle.H5" TagName="Radzen.Blazor.TagName.P" TextAlign="Radzen.TextAlign.Center" />
+                            <RadzenButton Click="@DelUser" ButtonStyle="ButtonStyle.Danger" Style="border-radius: 4px; margin-right: 10px; margin-left: 15px">
+                                <RadzenIcon Icon="login" class="mirror-icon"></RadzenIcon>
+                                <span class="rz-button-text">Logout</span>
+                            </RadzenButton>
+                        }
+                    }
+                    else
+                    {
+                        <RadzenText Text="Loading" TextStyle="Radzen.Blazor.TextStyle.H5" />
+                        <RadzenProgressBarCircular ProgressBarStyle="Radzen.ProgressBarStyle.Warning" Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="Radzen.ProgressBarCircularSize.Small" />
+                    }
+                </RadzenStack>
+            </RadzenColumn>
+        </RadzenRow>
+    </RadzenHeader>
+
+    <!-- Sidebar section of the layout -->
+    <RadzenSidebar Responsive="false" Style="@width" class="sidebar-container">
+        <RadzenStack AlignItems="Radzen.AlignItems.Center" class="rz-py-4 rz-py-lg-6">
+            <RadzenImage Path="images/NDA_TRANS_WHITE.png" style=@dynamicImageSize AlternateText="Application logo"></RadzenImage>
+            <RadzenText Text="NDA Processes" TextStyle="Radzen.Blazor.TextStyle.Subtitle1" class=@dynamicClass style="color: var(--rz-sidebar-color);" />
+        </RadzenStack>
+
+        <!-- Sidebar menu items -->
+        <RadzenPanelMenu DisplayStyle="@(sidebarExpanded ? MenuItemDisplayStyle.IconAndText : MenuItemDisplayStyle.Icon)" ShowArrow="false" class="menu-items">
+            <RadzenPanelMenuItem Text="Home" Path="" Icon="Home"/>
+        </RadzenPanelMenu>
+
+        <!-- Footer section of the sidebar -->
+        <div class="sidebar-footer">
+            <RadzenStack AlignItems="Radzen.AlignItems.Center" Gap="0" class="rz-py-4 rz-py-lg-6">
+                <RadzenText Text="NDAProcesses v0.9.0" TextStyle="Radzen.Blazor.TextStyle.Caption" TagName="Radzen.Blazor.TagName.P" TextAlign="Radzen.TextAlign.Center" class=@dynamicClass />
+            </RadzenStack>
+        </div>
+    </RadzenSidebar>
+
+
+    <!-- Body section of the layout -->
+    <RadzenBody>
+        <RadzenRow class="rz-mx-auto rz-px-4 rz-pt-2 rz-pt-md-4 rz-pt-lg-6 rz-pt-xl-12 rz-pb-2 rz-pb-lg-12" Style="max-width: 1440px;">
+            <RadzenColumn Size="12">
+                @Body
+            </RadzenColumn>
+        </RadzenRow>
+    </RadzenBody>
+
+</RadzenLayout>
+@code {
+    private bool sidebarExpanded = true;
+    private string sidebarToggleIcon => sidebarExpanded ? "keyboard_arrow_left" : "keyboard_arrow_right";
+    private UserModel ValidUser;
+    private string username;
+    private bool waitingforuserload = false;
+    private string dynamicClass = "rz-mb-0";
+    private string dynamicImageSize = "width: 96px; height: 48px;";
+    private string width = "width: 15em;";
+
+
+    // Lifecycle method that runs after the component has been rendered
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await FetchUsernameAsync(); // Fetch username data on the first render
+            StateHasChanged(); // Request a re-render to update the UI
+        }
+    }
+
+    // Toggles the state of the sidebar between expanded and collapsed
+    void SidebarToggleClick()
+    {
+        sidebarExpanded = !sidebarExpanded;
+        // Update dynamic styles and classes based on the new state
+        if (sidebarExpanded)
+        {
+            dynamicClass = "rz-mb-0";
+            dynamicImageSize = "width: 96px; height: 48px;";
+            width = "width: 15em;";
+        }
+        else
+        {
+            dynamicClass = "rz-mb-0 sidebarHide";
+            dynamicImageSize = "width: 48px; height: 24px;";
+            width = "width: 4.3em;";
+        }
+    }
+
+    // Deletes the user cookie and redirects to the login page
+    private async Task DelUser()
+    {
+        await CookieHelper.LogoutAsync();
+
+        string loginUrl = "login"; // URL of the login page
+        string currentUrl = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+
+        // If the current page is not the login page, redirect to login with return URL
+        if (!currentUrl.Contains(loginUrl, StringComparison.OrdinalIgnoreCase))
+        {
+            string returnUrl = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+            string encodedReturnUrl = Uri.EscapeDataString(returnUrl);
+            string navigateUrl = $"{loginUrl}?returnUrl={encodedReturnUrl}";
+
+            NavigationManager.NavigateTo(navigateUrl, true);
+        }
+        StateHasChanged(); // Request a re-render to update the UI
+    }
+
+    // Fetches the username of the currently logged-in user from the cookie
+    private async Task FetchUsernameAsync()
+    {
+        string userId = await CookieHelper.LoginStatus();
+        if (string.IsNullOrEmpty(userId))
+        {
+            username = null;
+        }
+        else
+        {
+            ValidUser = await UserService.GetUserData(userId);
+            username = ValidUser.DisplayName;
+        }
+        waitingforuserload = true; // Mark the user data as loaded
+    }
+}

@@ -1,0 +1,20 @@
+{
+  "version": 2,
+  "dgSpecHash": "VIZ9nuCjIes=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\ssingh\\Desktop\\test\\text\\NdaProcesses.Shared\\NDAProcesses.Shared.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\ssingh\\.nuget\\packages\\microsoft.aspnetcore.authorization\\8.0.11\\microsoft.aspnetcore.authorization.8.0.11.nupkg.sha512",
+    "C:\\Users\\ssingh\\.nuget\\packages\\microsoft.aspnetcore.components\\8.0.11\\microsoft.aspnetcore.components.8.0.11.nupkg.sha512",
+    "C:\\Users\\ssingh\\.nuget\\packages\\microsoft.aspnetcore.components.analyzers\\8.0.11\\microsoft.aspnetcore.components.analyzers.8.0.11.nupkg.sha512",
+    "C:\\Users\\ssingh\\.nuget\\packages\\microsoft.aspnetcore.components.forms\\8.0.11\\microsoft.aspnetcore.components.forms.8.0.11.nupkg.sha512",
+    "C:\\Users\\ssingh\\.nuget\\packages\\microsoft.aspnetcore.http.features\\5.0.17\\microsoft.aspnetcore.http.features.5.0.17.nupkg.sha512",
+    "C:\\Users\\ssingh\\.nuget\\packages\\microsoft.aspnetcore.metadata\\8.0.11\\microsoft.aspnetcore.metadata.8.0.11.nupkg.sha512",
+    "C:\\Users\\ssingh\\.nuget\\packages\\microsoft.extensions.dependencyinjection.abstractions\\8.0.2\\microsoft.extensions.dependencyinjection.abstractions.8.0.2.nupkg.sha512",
+    "C:\\Users\\ssingh\\.nuget\\packages\\microsoft.extensions.logging.abstractions\\8.0.2\\microsoft.extensions.logging.abstractions.8.0.2.nupkg.sha512",
+    "C:\\Users\\ssingh\\.nuget\\packages\\microsoft.extensions.options\\8.0.2\\microsoft.extensions.options.8.0.2.nupkg.sha512",
+    "C:\\Users\\ssingh\\.nuget\\packages\\microsoft.extensions.primitives\\8.0.0\\microsoft.extensions.primitives.8.0.0.nupkg.sha512",
+    "C:\\Users\\ssingh\\.nuget\\packages\\system.io.pipelines\\5.0.2\\system.io.pipelines.5.0.2.nupkg.sha512"
+  ],
+  "logs": []
+}

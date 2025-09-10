@@ -1,0 +1,24 @@
+@using System.Net.Http
+@using System.Net.Http.Json
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.Web.Virtualization
+@using Microsoft.JSInterop
+@using Radzen
+@using Radzen.Blazor
+@using NDAProcesses
+@using NDAProcesses.Client
+@using NDAProcesses.Client.Pages
+@using NDAProcesses.Client.Layout
+@using NDAProcesses.Client.Services
+@using NDAProcesses.Shared.Models
+@using NDAProcesses.Shared.Services
+@inject IJSRuntime JSRuntime
+@inject NavigationManager NavigationManager
+@inject DialogService DialogService
+@inject ContextMenuService ContextMenuService
+@inject TooltipService TooltipService
+@inject NotificationService NotificationService
+@inject CookieHelper CookieHelper
+@inject IUserService UserService

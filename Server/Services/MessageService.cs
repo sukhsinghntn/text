@@ -242,10 +242,8 @@ namespace NDAProcesses.Server.Services
                     .Where(x => x.Recipient == sender && x.Direction == "Sent")
                     .OrderByDescending(x => x.Timestamp)
                     .FirstOrDefaultAsync();
-                if (lastSent == null)
-                    continue;
-
-                recipient = lastSent.Sender;
+                if (lastSent != null)
+                    recipient = lastSent.Sender;
 
                 var message = new MessageModel
                 {

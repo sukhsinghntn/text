@@ -178,124 +178,113 @@ namespace NDAProcesses.Server.Services
             var baseUrl = _configuration["TextBee:BaseUrl"];
             var deviceId = _configuration["TextBee:DeviceId"];
             var apiKey = _configuration["TextBee:ApiKey"];
-            var url = $"{baseUrl}/gateway/devices/{deviceId}/messages";
+            // TextBee requires a special endpoint to retrieve only received SMS
+            var url = $"{baseUrl}/gateway/devices/{deviceId}/get-received-sms";
+
             var request = new HttpRequestMessage(HttpMethod.Get, url);
             request.Headers.Add("x-api-key", apiKey);
             var response = await _httpClient.SendAsync(request);
             if (!response.IsSuccessStatusCode) return;
 
-            List<MessageModel>? data = null;
+            string json;
             try
             {
-                var json = await response.Content.ReadAsStringAsync();
-                if (!string.IsNullOrWhiteSpace(json))
-                {
-                    using var doc = JsonDocument.Parse(json);
-                    JsonElement root = doc.RootElement;
-                    JsonElement arrayElement = root;
-
-                    if (root.ValueKind == JsonValueKind.Object)
-                    {
-                        if (root.TryGetProperty("data", out var dataProp) && dataProp.ValueKind == JsonValueKind.Array)
-                        {
-                            arrayElement = dataProp;
-                        }
-                        else if (root.TryGetProperty("messages", out var messagesProp) && messagesProp.ValueKind == JsonValueKind.Array)
-                        {
-                            arrayElement = messagesProp;
-                        }
-                        else
-                        {
-                            return;
-                        }
-                    }
-
-                    if (arrayElement.ValueKind == JsonValueKind.Array)
-                    {
-                        var list = new List<MessageModel>();
-                        foreach (var item in arrayElement.EnumerateArray())
-                        {
-                            var sender = item.TryGetProperty("from", out var fromProp) ? fromProp.GetString() ?? string.Empty : string.Empty;
-                            var recipient = item.TryGetProperty("to", out var toProp) ? toProp.GetString() ?? string.Empty : string.Empty;
-
-                            string body = string.Empty;
-                            if (item.TryGetProperty("message", out var msgProp))
-                                body = msgProp.GetString() ?? string.Empty;
-                            else if (item.TryGetProperty("text", out var textProp))
-                                body = textProp.GetString() ?? string.Empty;
-                            else if (item.TryGetProperty("body", out var bodyProp))
-                                body = bodyProp.GetString() ?? string.Empty;
-
-                            var directionRaw = item.TryGetProperty("direction", out var dirProp)
-                                ? dirProp.GetString() ?? string.Empty
-                                : (item.TryGetProperty("type", out var typeProp)
-                                    ? typeProp.GetString() ?? string.Empty
-                                    : string.Empty);
-                            var direction = directionRaw.Equals("Sent", StringComparison.OrdinalIgnoreCase)
-                                ? "Sent"
-                                : "Received";
-
-                            DateTime timestamp = DateTime.UtcNow;
-                            if (item.TryGetProperty("timestamp", out var tsProp) && tsProp.ValueKind == JsonValueKind.String)
-                            {
-                                DateTime.TryParse(tsProp.GetString(), out timestamp);
-                            }
-                            else if (item.TryGetProperty("created_at", out var createdProp) && createdProp.ValueKind == JsonValueKind.String)
-                            {
-                                DateTime.TryParse(createdProp.GetString(), out timestamp);
-                            }
-
-                            if (string.IsNullOrWhiteSpace(sender) || string.IsNullOrWhiteSpace(recipient))
-                                continue;
-
-                            if (direction == "Sent")
-                                continue;
-
-                            var lastSent = await _context.Messages
-                                .Where(x => x.Recipient == sender && x.Direction == "Sent")
-                                .OrderByDescending(x => x.Timestamp)
-                                .FirstOrDefaultAsync();
-                            if (lastSent != null)
-                            {
-                                recipient = lastSent.Sender;
-                            }
-
-                            list.Add(new MessageModel
-                            {
-                                Sender = sender,
-                                Recipient = recipient,
-                                Body = body,
-                                Direction = direction,
-                                Timestamp = timestamp
-                            });
-                        }
-
-                        data = list;
-                    }
-                }
+                json = await response.Content.ReadAsStringAsync();
             }
-            catch (JsonException)
+            catch
             {
                 return;
             }
+            if (string.IsNullOrWhiteSpace(json)) return;
 
-            if (data == null) return;
+            using JsonDocument doc = JsonDocument.Parse(json);
+            var messages = NormalizeMessages(doc.RootElement);
 
-            foreach (var m in data)
+            foreach (var item in messages)
             {
-                // Avoid duplicates based on timestamp and sender/recipient/body
+                var sender = item.TryGetProperty("from", out var fromProp) ? fromProp.GetString() ?? string.Empty : string.Empty;
+                var recipient = item.TryGetProperty("to", out var toProp) ? toProp.GetString() ?? string.Empty : string.Empty;
+
+                string body = string.Empty;
+                if (item.TryGetProperty("message", out var msgProp))
+                    body = msgProp.GetString() ?? string.Empty;
+                else if (item.TryGetProperty("text", out var textProp))
+                    body = textProp.GetString() ?? string.Empty;
+                else if (item.TryGetProperty("body", out var bodyProp))
+                    body = bodyProp.GetString() ?? string.Empty;
+
+                DateTime timestamp = DateTime.UtcNow;
+                if (item.TryGetProperty("timestamp", out var tsProp) && tsProp.ValueKind == JsonValueKind.String)
+                    DateTime.TryParse(tsProp.GetString(), out timestamp);
+                else if (item.TryGetProperty("created_at", out var createdProp) && createdProp.ValueKind == JsonValueKind.String)
+                    DateTime.TryParse(createdProp.GetString(), out timestamp);
+
+                if (string.IsNullOrWhiteSpace(sender) || string.IsNullOrWhiteSpace(recipient))
+                    continue;
+
+                // Map recipient to the internal user who last messaged this number
+                var lastSent = await _context.Messages
+                    .Where(x => x.Recipient == sender && x.Direction == "Sent")
+                    .OrderByDescending(x => x.Timestamp)
+                    .FirstOrDefaultAsync();
+                if (lastSent != null)
+                {
+                    recipient = lastSent.Sender;
+                }
+
+                var message = new MessageModel
+                {
+                    Sender = sender,
+                    Recipient = recipient,
+                    Body = body,
+                    Direction = "Received",
+                    Timestamp = timestamp
+                };
+
                 bool exists = await _context.Messages.AnyAsync(x =>
-                    x.Timestamp == m.Timestamp &&
-                    x.Sender == m.Sender &&
-                    x.Recipient == m.Recipient &&
-                    x.Body == m.Body &&
-                    x.Direction == m.Direction);
+                    x.Timestamp == message.Timestamp &&
+                    x.Sender == message.Sender &&
+                    x.Recipient == message.Recipient &&
+                    x.Body == message.Body &&
+                    x.Direction == message.Direction);
                 if (!exists)
                 {
-                    _context.Messages.Add(m);
+                    _context.Messages.Add(message);
                 }
             }
+
             await _context.SaveChangesAsync();
+        }
+
+        private static IEnumerable<JsonElement> NormalizeMessages(JsonElement root)
+        {
+            if (root.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var item in root.EnumerateArray())
+                    yield return item;
+                yield break;
+            }
+
+            if (root.ValueKind == JsonValueKind.Object)
+            {
+                foreach (var key in new[] { "messages", "data", "results", "items" })
+                {
+                    if (root.TryGetProperty(key, out var arr) && arr.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var item in arr.EnumerateArray())
+                            yield return item;
+                        yield break;
+                    }
+                }
+
+                if (root.TryGetProperty("from", out _) || root.TryGetProperty("to", out _) ||
+                    root.TryGetProperty("message", out _) || root.TryGetProperty("text", out _) ||
+                    root.TryGetProperty("body", out _) || root.TryGetProperty("timestamp", out _) ||
+                    root.TryGetProperty("created_at", out _))
+                {
+                    yield return root;
+                }
+            }
         }
     }
 }

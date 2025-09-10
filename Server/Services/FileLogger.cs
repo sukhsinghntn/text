@@ -9,6 +9,7 @@ namespace NDAProcesses.Server.Services
         void TextBee(string message);
         void Sql(string message);
         void System(string message);
+        void Fetch(string message);
     }
 
     public class FileLogger : IFileLogger
@@ -30,5 +31,6 @@ namespace NDAProcesses.Server.Services
         public void TextBee(string message) => Write("textbee.log", message);
         public void Sql(string message) => Write("sql.log", message);
         public void System(string message) => Write("system.log", message);
+        public void Fetch(string message) => Write("fetch.log", message);
     }
 }

@@ -280,17 +280,20 @@ namespace NDAProcesses.Server.Services
                 var response = await _httpClient.SendAsync(request);
                 var body = await response.Content.ReadAsStringAsync();
                 _fileLogger.TextBee($"Fetch {url} -> {(int)response.StatusCode} {response.StatusCode}");
+                _fileLogger.Fetch($"Fetch {url} -> {(int)response.StatusCode} {response.StatusCode}");
 
                 if (!response.IsSuccessStatusCode)
                 {
                     _logger.LogWarning("TextBee fetch {Url} failed: {Status} {Body}", url, response.StatusCode, body);
                     _fileLogger.System($"TextBee fetch {url} failed: {(int)response.StatusCode} {response.StatusCode} {body}");
+                    _fileLogger.Fetch($"Fetch {url} failed: {(int)response.StatusCode} {response.StatusCode}");
                     return Enumerable.Empty<JsonElement>();
                 }
 
                 if (string.IsNullOrWhiteSpace(body))
                 {
                     _fileLogger.System($"TextBee fetch {url} returned empty body");
+                    _fileLogger.Fetch($"Fetch {url} returned empty body");
                     return Enumerable.Empty<JsonElement>();
                 }
 
@@ -301,12 +304,14 @@ namespace NDAProcesses.Server.Services
                         .Select(e => e.Clone())
                         .ToList();
                     _fileLogger.TextBee($"Parsed {list.Count} messages from {url}");
+                    _fileLogger.Fetch($"Parsed {list.Count} messages from {url}");
                     return list;
                 }
                 catch (Exception ex)
                 {
                     _logger.LogWarning(ex, "TextBee parse failure from {Url}", url);
                     _fileLogger.System($"Parse failure from {url}: {ex.Message} Body: {body}");
+                    _fileLogger.Fetch($"Parse failure from {url}: {ex.Message}");
                     return Enumerable.Empty<JsonElement>();
                 }
             }
@@ -314,6 +319,7 @@ namespace NDAProcesses.Server.Services
             {
                 _logger.LogError(ex, "TextBee fetch {Url} threw exception", url);
                 _fileLogger.System($"Fetch {url} threw {ex.GetType().Name}: {ex.Message}");
+                _fileLogger.Fetch($"Fetch {url} threw {ex.GetType().Name}: {ex.Message}");
                 return Enumerable.Empty<JsonElement>();
             }
         }

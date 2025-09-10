@@ -1,3 +1,4 @@
+using System;
 using System.Net.Http.Json;
 using Microsoft.EntityFrameworkCore;
 using NDAProcesses.Server.Data;
@@ -178,56 +179,37 @@ namespace NDAProcesses.Server.Services
             var baseUrl = _configuration["TextBee:BaseUrl"];
             var deviceId = _configuration["TextBee:DeviceId"];
             var apiKey = _configuration["TextBee:ApiKey"];
-            // TextBee requires a special endpoint to retrieve only received SMS
-            var url = $"{baseUrl}/gateway/devices/{deviceId}/get-received-sms";
 
-            var request = new HttpRequestMessage(HttpMethod.Get, url);
-            request.Headers.Add("x-api-key", apiKey);
-            var response = await _httpClient.SendAsync(request);
-            if (!response.IsSuccessStatusCode)
+            var receivedUrl = $"{baseUrl}/gateway/devices/{deviceId}/get-received-sms";
+            var allUrl = $"{baseUrl}/gateway/devices/{deviceId}/messages";
+
+            var messages = await FetchMessages(receivedUrl, apiKey);
+            if (!messages.Any())
             {
-                _logger.LogWarning("TextBee inbox poll failed: {Status}", response.StatusCode);
-                return;
+                var all = await FetchMessages(allUrl, apiKey);
+                messages = all.Where(IsReceived);
             }
 
-            string json;
-            try
-            {
-                json = await response.Content.ReadAsStringAsync();
-            }
-            catch
-            {
-                return;
-            }
-            if (string.IsNullOrWhiteSpace(json)) return;
-
-            using JsonDocument doc = JsonDocument.Parse(json);
-            var messages = NormalizeMessages(doc.RootElement);
             var saved = 0;
 
             foreach (var item in messages)
             {
-                var sender = item.TryGetProperty("from", out var fromProp) ? fromProp.GetString() ?? string.Empty : string.Empty;
-                var recipient = item.TryGetProperty("to", out var toProp) ? toProp.GetString() ?? string.Empty : string.Empty;
+                var msgId = GuessId(item);
+                if (!string.IsNullOrEmpty(msgId) && await _context.Messages.AnyAsync(m => m.ExternalId == msgId))
+                    continue;
 
-                string body = string.Empty;
-                if (item.TryGetProperty("message", out var msgProp))
-                    body = msgProp.GetString() ?? string.Empty;
-                else if (item.TryGetProperty("text", out var textProp))
-                    body = textProp.GetString() ?? string.Empty;
-                else if (item.TryGetProperty("body", out var bodyProp))
-                    body = bodyProp.GetString() ?? string.Empty;
-
-                DateTime timestamp = DateTime.UtcNow;
-                if (item.TryGetProperty("timestamp", out var tsProp) && tsProp.ValueKind == JsonValueKind.String)
-                    DateTime.TryParse(tsProp.GetString(), out timestamp);
-                else if (item.TryGetProperty("created_at", out var createdProp) && createdProp.ValueKind == JsonValueKind.String)
-                    DateTime.TryParse(createdProp.GetString(), out timestamp);
-
+                var sender = GetString(item, "from", "sender");
+                var recipient = GetString(item, "to", "recipient");
                 if (string.IsNullOrWhiteSpace(sender) || string.IsNullOrWhiteSpace(recipient))
                     continue;
 
-                // Map recipient to the internal user who last messaged this number
+                var body = GetString(item, "message", "text", "body");
+                var tsString = GetString(item, "timestamp", "created_at");
+                var timestamp = DateTime.UtcNow;
+                if (!string.IsNullOrWhiteSpace(tsString))
+                    DateTime.TryParse(tsString, out timestamp);
+
+                // Map to the internal user who last sent to this number
                 var lastSent = await _context.Messages
                     .Where(x => x.Recipient == sender && x.Direction == "Sent")
                     .OrderByDescending(x => x.Timestamp)
@@ -243,26 +225,70 @@ namespace NDAProcesses.Server.Services
                     Recipient = recipient,
                     Body = body,
                     Direction = "Received",
-                    Timestamp = timestamp
+                    Timestamp = timestamp,
+                    ExternalId = msgId ?? string.Empty
                 };
 
-                bool exists = await _context.Messages.AnyAsync(x =>
-                    x.Timestamp == message.Timestamp &&
-                    x.Sender == message.Sender &&
-                    x.Recipient == message.Recipient &&
-                    x.Body == message.Body &&
-                    x.Direction == message.Direction);
-                if (!exists)
-                {
-                    _context.Messages.Add(message);
-                    saved++;
-                }
+                _context.Messages.Add(message);
+                saved++;
             }
+
             if (saved > 0)
             {
                 await _context.SaveChangesAsync();
                 _logger.LogInformation("Stored {Count} new incoming messages", saved);
             }
+        }
+
+        private async Task<IEnumerable<JsonElement>> FetchMessages(string url, string apiKey)
+        {
+            try
+            {
+                var request = new HttpRequestMessage(HttpMethod.Get, url);
+                request.Headers.Add("x-api-key", apiKey);
+                var response = await _httpClient.SendAsync(request);
+                if (!response.IsSuccessStatusCode)
+                    return Enumerable.Empty<JsonElement>();
+                var json = await response.Content.ReadAsStringAsync();
+                if (string.IsNullOrWhiteSpace(json))
+                    return Enumerable.Empty<JsonElement>();
+                using var doc = JsonDocument.Parse(json);
+                return NormalizeMessages(doc.RootElement).ToList();
+            }
+            catch
+            {
+                return Enumerable.Empty<JsonElement>();
+            }
+        }
+
+        private static string? GuessId(JsonElement m)
+        {
+            foreach (var name in new[] { "id", "message_id", "_id", "uuid" })
+            {
+                if (m.TryGetProperty(name, out var prop) && prop.ValueKind == JsonValueKind.String)
+                {
+                    var v = prop.GetString();
+                    if (!string.IsNullOrWhiteSpace(v))
+                        return v;
+                }
+            }
+            return null;
+        }
+
+        private static string GetString(JsonElement m, params string[] names)
+        {
+            foreach (var n in names)
+            {
+                if (m.TryGetProperty(n, out var prop) && prop.ValueKind == JsonValueKind.String)
+                    return prop.GetString() ?? string.Empty;
+            }
+            return string.Empty;
+        }
+
+        private static bool IsReceived(JsonElement m)
+        {
+            var dir = GetString(m, "direction", "type").ToLowerInvariant();
+            return dir.Contains("recv") || dir == "inbound" || dir == "received";
         }
 
         private static IEnumerable<JsonElement> NormalizeMessages(JsonElement root)

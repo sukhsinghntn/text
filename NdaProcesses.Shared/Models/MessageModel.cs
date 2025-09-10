@@ -10,5 +10,6 @@ namespace NDAProcesses.Shared.Models
         public string Direction { get; set; } = string.Empty;
         public string SenderName { get; set; } = string.Empty;
         public string SenderDepartment { get; set; } = string.Empty;
+        public string ExternalId { get; set; } = string.Empty;
     }
 }

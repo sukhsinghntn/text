@@ -220,7 +220,7 @@ namespace NDAProcesses.Server.Services
             {
                 var sender = NormalizePhone(GetString(item, "from", "sender"));
                 var recipient = NormalizePhone(GetString(item, "to", "recipient"));
-                if (string.IsNullOrWhiteSpace(sender) || string.IsNullOrWhiteSpace(recipient))
+                if (string.IsNullOrWhiteSpace(sender))
                     continue;
 
                 var body = GetString(item, "message", "text", "body");
@@ -244,6 +244,8 @@ namespace NDAProcesses.Server.Services
                     .FirstOrDefaultAsync();
                 if (lastSent != null)
                     recipient = lastSent.Sender;
+                else if (string.IsNullOrWhiteSpace(recipient))
+                    recipient = string.Empty;
 
                 var message = new MessageModel
                 {

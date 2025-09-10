@@ -305,6 +305,11 @@ namespace NDAProcesses.Server.Services
                         .ToList();
                     _fileLogger.TextBee($"Parsed {list.Count} messages from {url}");
                     _fileLogger.Fetch($"Parsed {list.Count} messages from {url}");
+                    foreach (var msg in list)
+                    {
+                        var raw = msg.GetRawText().Replace("\n", " ").Replace("\r", " ");
+                        _fileLogger.Fetch($"Message {raw}");
+                    }
                     return list;
                 }
                 catch (Exception ex)

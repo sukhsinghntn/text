@@ -29,6 +29,7 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<CookieHelper>();
 builder.Services.AddScoped<IMessageService, MessageService>();
 builder.Services.AddHostedService<ScheduledMessageWorker>();
+builder.Services.AddHostedService<InboxPollerWorker>();
 
 builder.Services.AddDbContext<MessageContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("Default")));

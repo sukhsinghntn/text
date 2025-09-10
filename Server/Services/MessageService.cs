@@ -205,10 +205,47 @@ namespace NDAProcesses.Server.Services
 
                     if (arrayElement.ValueKind == JsonValueKind.Array)
                     {
-                        data = JsonSerializer.Deserialize<List<MessageModel>>(arrayElement.GetRawText(), new JsonSerializerOptions
+                        var list = new List<MessageModel>();
+                        foreach (var item in arrayElement.EnumerateArray())
                         {
-                            PropertyNameCaseInsensitive = true
-                        });
+                            var sender = item.TryGetProperty("from", out var fromProp) ? fromProp.GetString() ?? string.Empty : string.Empty;
+                            var recipient = item.TryGetProperty("to", out var toProp) ? toProp.GetString() ?? string.Empty : string.Empty;
+
+                            string body = string.Empty;
+                            if (item.TryGetProperty("message", out var msgProp))
+                                body = msgProp.GetString() ?? string.Empty;
+                            else if (item.TryGetProperty("text", out var textProp))
+                                body = textProp.GetString() ?? string.Empty;
+                            else if (item.TryGetProperty("body", out var bodyProp))
+                                body = bodyProp.GetString() ?? string.Empty;
+
+                            var direction = item.TryGetProperty("direction", out var dirProp) ? dirProp.GetString() ?? string.Empty :
+                                            item.TryGetProperty("type", out var typeProp) ? typeProp.GetString() ?? string.Empty;
+
+                            DateTime timestamp = DateTime.UtcNow;
+                            if (item.TryGetProperty("timestamp", out var tsProp) && tsProp.ValueKind == JsonValueKind.String)
+                            {
+                                DateTime.TryParse(tsProp.GetString(), out timestamp);
+                            }
+                            else if (item.TryGetProperty("created_at", out var createdProp) && createdProp.ValueKind == JsonValueKind.String)
+                            {
+                                DateTime.TryParse(createdProp.GetString(), out timestamp);
+                            }
+
+                            if (string.IsNullOrWhiteSpace(sender) || string.IsNullOrWhiteSpace(recipient))
+                                continue;
+
+                            list.Add(new MessageModel
+                            {
+                                Sender = sender,
+                                Recipient = recipient,
+                                Body = body,
+                                Direction = direction,
+                                Timestamp = timestamp
+                            });
+                        }
+
+                        data = list;
                     }
                 }
             }

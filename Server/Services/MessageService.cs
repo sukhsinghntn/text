@@ -184,7 +184,11 @@ namespace NDAProcesses.Server.Services
             var request = new HttpRequestMessage(HttpMethod.Get, url);
             request.Headers.Add("x-api-key", apiKey);
             var response = await _httpClient.SendAsync(request);
-            if (!response.IsSuccessStatusCode) return;
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("TextBee inbox poll failed: {Status}", response.StatusCode);
+                return;
+            }
 
             string json;
             try
@@ -199,6 +203,7 @@ namespace NDAProcesses.Server.Services
 
             using JsonDocument doc = JsonDocument.Parse(json);
             var messages = NormalizeMessages(doc.RootElement);
+            var saved = 0;
 
             foreach (var item in messages)
             {
@@ -250,10 +255,14 @@ namespace NDAProcesses.Server.Services
                 if (!exists)
                 {
                     _context.Messages.Add(message);
+                    saved++;
                 }
             }
-
-            await _context.SaveChangesAsync();
+            if (saved > 0)
+            {
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Stored {Count} new incoming messages", saved);
+            }
         }
 
         private static IEnumerable<JsonElement> NormalizeMessages(JsonElement root)

@@ -841,3 +841,4 @@ C:\Users\ssingh\Desktop\test\text\Server\obj\Debug\net8.0\refint\NDAProcesses.Se
 C:\Users\ssingh\Desktop\test\text\Server\obj\Debug\net8.0\NDAProcesses.Server.pdb
 C:\Users\ssingh\Desktop\test\text\Server\obj\Debug\net8.0\NDAProcesses.Server.genruntimeconfig.cache
 C:\Users\ssingh\Desktop\test\text\Server\obj\Debug\net8.0\ref\NDAProcesses.Server.dll
+C:\Users\ssingh\Desktop\test\text\Server\obj\Debug\net8.0\NDAProcesses.Server.sourcelink.json

@@ -3,6 +3,10 @@
   "WorkspaceRootPath": "C:\\Users\\ssingh\\Desktop\\test\\text\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{71C9EE61-0195-4C25-AC55-A4EBD85D41F7}|Client\\NDAProcesses.Client.csproj|c:\\users\\ssingh\\desktop\\test\\text\\client\\layout\\mainlayout.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{71C9EE61-0195-4C25-AC55-A4EBD85D41F7}|Client\\NDAProcesses.Client.csproj|solutionrelative:client\\layout\\mainlayout.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{C1518281-3568-4581-9F0F-EC8837685437}|Server\\NDAProcesses.Server.csproj|c:\\users\\ssingh\\desktop\\test\\text\\server\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
       "RelativeMoniker": "D:0:0:{C1518281-3568-4581-9F0F-EC8837685437}|Server\\NDAProcesses.Server.csproj|solutionrelative:server\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
     },
@@ -24,10 +28,6 @@
     {
       "AbsoluteMoniker": "D:0:0:{C1518281-3568-4581-9F0F-EC8837685437}|Server\\NDAProcesses.Server.csproj|c:\\users\\ssingh\\desktop\\test\\text\\server\\services\\userservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{C1518281-3568-4581-9F0F-EC8837685437}|Server\\NDAProcesses.Server.csproj|solutionrelative:server\\services\\userservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{71C9EE61-0195-4C25-AC55-A4EBD85D41F7}|Client\\NDAProcesses.Client.csproj|c:\\users\\ssingh\\desktop\\test\\text\\client\\layout\\mainlayout.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
-      "RelativeMoniker": "D:0:0:{71C9EE61-0195-4C25-AC55-A4EBD85D41F7}|Client\\NDAProcesses.Client.csproj|solutionrelative:client\\layout\\mainlayout.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{71C9EE61-0195-4C25-AC55-A4EBD85D41F7}|Client\\NDAProcesses.Client.csproj|c:\\users\\ssingh\\desktop\\test\\text\\client\\pages\\users\\login.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
@@ -61,7 +61,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 21,
+          "SelectedChildIndex": 17,
           "Children": [
             {
               "$type": "Bookmark",
@@ -113,7 +113,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 4,
               "Title": "Microsoft.PackageDependencyResolution.targets",
               "DocumentMoniker": "C:\\Program Files\\dotnet\\sdk\\9.0.100\\Sdks\\Microsoft.NET.Sdk\\targets\\Microsoft.PackageDependencyResolution.targets",
               "RelativeDocumentMoniker": "..\\..\\..\\..\\..\\Program Files\\dotnet\\sdk\\9.0.100\\Sdks\\Microsoft.NET.Sdk\\targets\\Microsoft.PackageDependencyResolution.targets",
@@ -125,7 +125,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 3,
               "Title": "UserServiceProxy.cs",
               "DocumentMoniker": "C:\\Users\\ssingh\\Desktop\\test\\text\\Client\\Services\\UserServiceProxy.cs",
               "RelativeDocumentMoniker": "Client\\Services\\UserServiceProxy.cs",
@@ -137,7 +137,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 2,
               "Title": "UserController.cs",
               "DocumentMoniker": "C:\\Users\\ssingh\\Desktop\\test\\text\\Server\\Controllers\\UserController.cs",
               "RelativeDocumentMoniker": "Server\\Controllers\\UserController.cs",
@@ -145,12 +145,11 @@
               "RelativeToolTip": "Server\\Controllers\\UserController.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAACMAAAAJAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-12-06T17:33:17.337Z",
-              "EditorCaption": ""
+              "WhenOpened": "2024-12-06T17:33:17.337Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 6,
               "Title": "UserService.cs",
               "DocumentMoniker": "C:\\Users\\ssingh\\Desktop\\test\\text\\Server\\Services\\UserService.cs",
               "RelativeDocumentMoniker": "Server\\Services\\UserService.cs",
@@ -174,15 +173,16 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 0,
               "Title": "MainLayout.razor",
               "DocumentMoniker": "C:\\Users\\ssingh\\Desktop\\test\\text\\Client\\Layout\\MainLayout.razor",
               "RelativeDocumentMoniker": "Client\\Layout\\MainLayout.razor",
               "ToolTip": "C:\\Users\\ssingh\\Desktop\\test\\text\\Client\\Layout\\MainLayout.razor",
               "RelativeToolTip": "Client\\Layout\\MainLayout.razor",
-              "ViewState": "AQIAAHsAAAAAAAAAAAAiwE8AAAAcAAAA",
+              "ViewState": "AgIAAGYAAAAAAAAAAAAiwE8AAAAcAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
-              "WhenOpened": "2024-12-06T17:29:15.809Z"
+              "WhenOpened": "2024-12-06T17:29:15.809Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
@@ -222,7 +222,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 1,
               "Title": "appsettings.json",
               "DocumentMoniker": "C:\\Users\\ssingh\\Desktop\\test\\text\\Server\\appsettings.json",
               "RelativeDocumentMoniker": "Server\\appsettings.json",
@@ -247,7 +247,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 5,
               "Title": "IUserService.cs",
               "DocumentMoniker": "C:\\Users\\ssingh\\Desktop\\test\\text\\NdaProcesses.Shared\\Services\\IUserService.cs",
               "RelativeDocumentMoniker": "NdaProcesses.Shared\\Services\\IUserService.cs",

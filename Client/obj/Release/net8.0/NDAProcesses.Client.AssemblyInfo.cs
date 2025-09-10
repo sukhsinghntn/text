@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("NDAProcesses.Client")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+2f727d3c759976b50e60d37f2d13529541dbe848")]
 [assembly: System.Reflection.AssemblyProductAttribute("NDAProcesses.Client")]
 [assembly: System.Reflection.AssemblyTitleAttribute("NDAProcesses.Client")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

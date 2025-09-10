@@ -2,3 +2,4 @@ P:\Dev\NDALogin\Client\obj\Debug\net8.0\staticwebassets.build.json
 P:\Dev\NDALogin\Client\obj\Debug\net8.0\staticwebassets.build.json
 C:\Users\ssingh\Desktop\1.0\NDALogin\Client\obj\Debug\net8.0\staticwebassets.build.json
 C:\Users\ssingh\Desktop\test\text\Client\obj\Debug\net8.0\staticwebassets.build.json
+C:\Users\ssingh\Desktop\test\text\Client\obj\Debug\net8.0\staticwebassets.build.json

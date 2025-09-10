@@ -1,0 +1,60 @@
+@page "/messages"
+
+<PageTitle>Messages</PageTitle>
+
+@if (messages == null)
+{
+    <RadzenProgressBarCircular Mode="ProgressBarMode.Indeterminate" Style="width:40px;height:40px" />
+}
+else
+{
+    <RadzenRow>
+        <RadzenColumn Size="12" SizeMD="4">
+            <RadzenTemplateForm Data="@newMessage" TItem="MessageModel" Submit="SendAsync">
+                <RadzenFieldset Legend="Send Message">
+                    <RadzenLabel Text="Recipient" />
+                    <RadzenTextBox @bind-Value="newMessage.Recipient" Style="width:100%" />
+                    <RadzenLabel Text="Message" />
+                    <RadzenTextArea @bind-Value="newMessage.Content" Style="width:100%" />
+                    <RadzenButton ButtonType="ButtonType.Submit" Text="Send" Style="margin-top:10px" />
+                </RadzenFieldset>
+            </RadzenTemplateForm>
+        </RadzenColumn>
+        <RadzenColumn Size="12" SizeMD="8">
+            <RadzenDataGrid Data="@messages" TItem="MessageModel" RowHover="true">
+                <Columns>
+                    <RadzenDataGridColumn TItem="MessageModel" Property="Timestamp" Title="Time" />
+                    <RadzenDataGridColumn TItem="MessageModel" Property="Direction" Title="Direction" />
+                    <RadzenDataGridColumn TItem="MessageModel" Property="Sender" Title="From" />
+                    <RadzenDataGridColumn TItem="MessageModel" Property="Recipient" Title="To" />
+                    <RadzenDataGridColumn TItem="MessageModel" Property="Content" Title="Message" />
+                </Columns>
+            </RadzenDataGrid>
+        </RadzenColumn>
+    </RadzenRow>
+}
+
+@code {
+    private List<MessageModel>? messages;
+    private MessageModel newMessage = new MessageModel();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        var user = await CookieHelper.LoginStatus();
+        newMessage.UserName = user;
+        messages = await MessageService.GetMessages(user);
+    }
+
+    private async Task SendAsync()
+    {
+        newMessage.UserName = await CookieHelper.LoginStatus();
+        await MessageService.SendMessage(newMessage);
+        newMessage = new MessageModel();
+        await LoadAsync();
+    }
+}

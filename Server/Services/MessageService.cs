@@ -5,6 +5,8 @@ using NDAProcesses.Shared.Models;
 using NDAProcesses.Shared.Services;
 using System.Collections.Generic;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
+using System.Text;
 
 namespace NDAProcesses.Server.Services
 {
@@ -13,12 +15,14 @@ namespace NDAProcesses.Server.Services
         private readonly MessageContext _context;
         private readonly HttpClient _httpClient;
         private readonly IConfiguration _configuration;
+        private readonly ILogger<MessageService> _logger;
 
-        public MessageService(MessageContext context, IHttpClientFactory httpClientFactory, IConfiguration configuration)
+        public MessageService(MessageContext context, IHttpClientFactory httpClientFactory, IConfiguration configuration, ILogger<MessageService> logger)
         {
             _context = context;
             _httpClient = httpClientFactory.CreateClient();
             _configuration = configuration;
+            _logger = logger;
         }
 
         public async Task<IEnumerable<MessageModel>> GetMessages(string userName)
@@ -45,13 +49,21 @@ namespace NDAProcesses.Server.Services
                 message = message.Body
             };
 
-            var request = new HttpRequestMessage(HttpMethod.Post, url)
-            {
-                Content = JsonContent.Create(payload)
-            };
+            var json = JsonSerializer.Serialize(payload);
+            var request = new HttpRequestMessage(HttpMethod.Post, url);
             request.Headers.Add("x-api-key", apiKey);
+            request.Content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            _logger.LogInformation("Sending SMS via TextBee to {Recipient}", message.Recipient);
             var response = await _httpClient.SendAsync(request);
-            response.EnsureSuccessStatusCode();
+            var responseBody = await response.Content.ReadAsStringAsync();
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogError("TextBee send failed: {Status} {Body}", response.StatusCode, responseBody);
+                throw new HttpRequestException($"TextBee send failed: {response.StatusCode}");
+            }
+
+            _logger.LogInformation("TextBee send response: {Body}", responseBody);
 
             message.Direction = "Sent";
             message.Timestamp = DateTime.UtcNow;

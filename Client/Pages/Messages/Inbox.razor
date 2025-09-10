@@ -1,5 +1,6 @@
 @page "/messages"
 @using Microsoft.AspNetCore.Components.Web
+@using Radzen
 @inject CookieHelper CookieHelper
 @inject NavigationManager NavigationManager
 @inject IMessageService MessageService
@@ -18,6 +19,9 @@ else
 {
     <div class="chat-container">
         <aside class="recipients">
+            <RadzenDropDown Data="@contacts" TextProperty="Name" ValueProperty="PhoneNumber"
+                            Placeholder="Select recipient" Style="width:100%; margin-bottom:10px;"
+                            Change="@OnRecipientChange" />
             @foreach (var r in recipients)
             {
                 var display = contacts.FirstOrDefault(c => c.PhoneNumber == r)?.Name ?? r;
@@ -158,7 +162,20 @@ else
     {
         selectedRecipient = recipient;
         conversation = (await MessageService.GetConversation(userName!, recipient)).ToList();
-        newMessage.Recipient = recipient;
+        newMessage = new MessageModel { Recipient = recipient };
+        if (!recipients.Contains(recipient))
+        {
+            recipients.Add(recipient);
+        }
+    }
+
+    private async Task OnRecipientChange(object value)
+    {
+        var phone = value as string;
+        if (!string.IsNullOrEmpty(phone))
+        {
+            await LoadConversation(phone);
+        }
     }
 
     private async Task HandleKeyDown(KeyboardEventArgs e)

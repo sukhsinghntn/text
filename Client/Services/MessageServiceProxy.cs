@@ -49,6 +49,11 @@ namespace NDAProcesses.Client.Services
             await _httpClient.PostAsJsonAsync("api/messages/contacts", contact);
         }
 
+        public async Task DeleteContact(int id, string userName)
+        {
+            await _httpClient.DeleteAsync($"api/messages/{userName}/contacts/{id}");
+        }
+
         public async Task ScheduleMessage(ScheduledMessageModel message)
         {
             await _httpClient.PostAsJsonAsync("api/messages/schedule", message);

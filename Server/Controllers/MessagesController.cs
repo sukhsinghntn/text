@@ -46,6 +46,13 @@ namespace NDAProcesses.Server.Controllers
             return Ok();
         }
 
+        [HttpDelete("{userName}/contacts/{id}")]
+        public async Task<IActionResult> DeleteContact(string userName, int id)
+        {
+            await _messageService.DeleteContact(id, userName);
+            return Ok();
+        }
+
         [HttpGet("{userName}/scheduled")]
         public async Task<IEnumerable<ScheduledMessageModel>> GetScheduled(string userName)
         {

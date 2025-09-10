@@ -10,6 +10,7 @@ namespace NDAProcesses.Shared.Services
         Task SendMessage(MessageModel message);
         Task<IEnumerable<ContactModel>> GetContacts(string userName);
         Task SaveContact(ContactModel contact);
+        Task DeleteContact(int id, string userName);
         Task ScheduleMessage(ScheduledMessageModel message);
         Task<IEnumerable<ScheduledMessageModel>> GetScheduledMessages(string userName);
         Task CancelScheduledMessage(int id, string userName);

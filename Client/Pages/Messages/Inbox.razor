@@ -1,4 +1,5 @@
 @page "/messages"
+@using Microsoft.AspNetCore.Components.Web
 @inject CookieHelper CookieHelper
 @inject NavigationManager NavigationManager
 @inject IMessageService MessageService
@@ -7,84 +8,114 @@
 
 @if (!isLoaded)
 {
-    <RadzenText Text="Loading" TextStyle="Radzen.Blazor.TextStyle.H5" />
-    <RadzenProgressBarCircular ProgressBarStyle="Radzen.ProgressBarStyle.Warning" Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="Radzen.ProgressBarCircularSize.Small" />
+    <p>Loading...</p>
 }
 else if (string.IsNullOrEmpty(userName))
 {
-    <RadzenAlert AlertStyle="AlertStyle.Warning">Please login to view messages.</RadzenAlert>
+    <div class="alert alert-warning">Please login to view messages.</div>
 }
 else
 {
-    <div class="row">
-        <div class="col-3">
-            <ul class="list-group">
-                @foreach (var r in recipients)
-                {
-                    var display = contacts.FirstOrDefault(c => c.PhoneNumber == r)?.Name ?? r;
-                    <li class="list-group-item @(r == selectedRecipient ? "active" : string.Empty)" @onclick="(() => LoadConversation(r))">@display</li>
-                }
-            </ul>
-        </div>
-        <div class="col-9">
-            <div style="height:300px; overflow-y:auto; border:1px solid #ccc; padding:10px;">
+    <div class="chat-container">
+        <aside class="recipients">
+            @foreach (var r in recipients)
+            {
+                var display = contacts.FirstOrDefault(c => c.PhoneNumber == r)?.Name ?? r;
+                var preview = lastMessages.ContainsKey(r) ? lastMessages[r] : string.Empty;
+                <div class="recipient @(r == selectedRecipient ? "active" : string.Empty)" @onclick="(() => LoadConversation(r))">
+                    <div class="avatar">@display.Substring(0,1)</div>
+                    <div class="info">
+                        <div class="name">@display</div>
+                        <div class="preview">@preview</div>
+                    </div>
+                </div>
+            }
+        </aside>
+        <section class="conversation">
+            <div class="messages" id="messages">
                 @foreach (var m in conversation)
                 {
-                    <div class="@(m.Direction == "Sent" ? "text-end" : "text-start")">
-                        <span class="badge bg-secondary">@((m.Direction == "Sent") ? "You" : contacts.FirstOrDefault(c => c.PhoneNumber == m.Sender)?.Name ?? m.Sender)</span>
-                        <div>@m.Body</div>
-                    </div>
+                    <div class="bubble @(m.Direction == "Sent" ? "outgoing" : "incoming")">@m.Body</div>
                 }
             </div>
-            <RadzenTemplateForm Data="newMessage" TItem="MessageModel" Submit="SendAsync" Style="margin-top:10px">
-                @if (string.IsNullOrEmpty(selectedRecipient))
-                {
-                    <RadzenLabel Text="Recipient" />
-                    <RadzenTextBox Style="width:100%" @bind-Value="newMessage.Recipient" />
-                }
-                <RadzenLabel Text="Message" />
-                <RadzenTextArea Style="width:100%" @bind-Value="newMessage.Body" />
-                <RadzenLabel Text="Your Name" />
-                <RadzenTextBox Style="width:100%" @bind-Value="newMessage.SenderName" />
-                <RadzenLabel Text="Department" />
-                <RadzenTextBox Style="width:100%" @bind-Value="newMessage.SenderDepartment" />
-                <RadzenLabel Text="Schedule (optional)" />
-                <RadzenDatePicker Style="width:100%" @bind-Value="scheduleTime" DateFormat="yyyy-MM-dd HH:mm" />
-                <RadzenButton ButtonType="ButtonType.Submit" Text="@(scheduleTime.HasValue ? "Schedule" : "Send")" ButtonStyle="ButtonStyle.Success" Style="margin-top:10px" />
-            </RadzenTemplateForm>
-        </div>
-    </div>
-
-    <div class="row mt-3">
-        <div class="col-6">
-            <RadzenFieldset Legend="Add Contact">
-                <RadzenTemplateForm Data="newContact" TItem="ContactModel" Submit="AddContact">
-                    <RadzenLabel Text="Name" />
-                    <RadzenTextBox Style="width:100%" @bind-Value="newContact.Name" />
-                    <RadzenLabel Text="Phone" />
-                    <RadzenTextBox Style="width:100%" @bind-Value="newContact.PhoneNumber" />
-                    <RadzenButton ButtonType="ButtonType.Submit" Text="Save" Style="margin-top:10px" />
-                </RadzenTemplateForm>
-            </RadzenFieldset>
-        </div>
-        <div class="col-6">
-            <RadzenFieldset Legend="Scheduled Messages">
-                <RadzenDataGrid Data="scheduled" TItem="ScheduledMessageModel" ShowPagingSummary="false">
-                    <Columns>
-                        <RadzenDataGridColumn TItem="ScheduledMessageModel" Property="Recipient" Title="To" />
-                        <RadzenDataGridColumn TItem="ScheduledMessageModel" Property="Body" Title="Message" />
-                        <RadzenDataGridColumn TItem="ScheduledMessageModel" Property="ScheduledFor" Title="When" />
-                        <RadzenDataGridColumn TItem="ScheduledMessageModel" Filterable="false" Sortable="false" TextAlign="TextAlign.Center">
-                            <Template Context="item">
-                                <RadzenButton Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Danger" Text="Cancel" Click="@(() => CancelSchedule(item.Id))" />
-                            </Template>
-                        </RadzenDataGridColumn>
-                    </Columns>
-                </RadzenDataGrid>
-            </RadzenFieldset>
-        </div>
+            <input id="messageInput" class="message-input" placeholder="Type a message" @bind="newMessage.Body" @onkeydown="HandleKeyDown" />
+        </section>
     </div>
 }
+
+<style>
+.chat-container {
+    display: flex;
+    height: 80vh;
+    border: 1px solid #ccc;
+}
+.recipients {
+    width: 30%;
+    border-right: 1px solid #ccc;
+    overflow-y: auto;
+}
+.recipient {
+    padding: 10px;
+    display: flex;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+}
+.recipient.active {
+    background: #f0f0f0;
+}
+.avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #007bff;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 10px;
+    font-weight: bold;
+}
+.info .name {
+    font-weight: bold;
+}
+.info .preview {
+    font-size: 0.85rem;
+    color: #666;
+}
+.conversation {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+.messages {
+    flex: 1;
+    padding: 10px;
+    overflow-y: auto;
+}
+.bubble {
+    max-width: 70%;
+    padding: 8px 12px;
+    border-radius: 12px;
+    margin-bottom: 8px;
+}
+.bubble.incoming {
+    background: #e5e5ea;
+    align-self: flex-start;
+}
+.bubble.outgoing {
+    background: #0b93f6;
+    color: white;
+    align-self: flex-end;
+}
+.message-input {
+    border: none;
+    border-top: 1px solid #ccc;
+    padding: 10px;
+}
+.message-input:focus {
+    outline: none;
+}
+</style>
 
 @code {
     private string? userName;
@@ -92,11 +123,9 @@ else
     private List<string> recipients = new();
     private List<MessageModel> conversation = new();
     private string? selectedRecipient;
-    private MessageModel newMessage = new MessageModel();
+    private MessageModel newMessage = new();
     private List<ContactModel> contacts = new();
-    private ContactModel newContact = new ContactModel();
-    private List<ScheduledMessageModel> scheduled = new();
-    private DateTime? scheduleTime;
+    private Dictionary<string, string> lastMessages = new();
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -111,7 +140,14 @@ else
             {
                 recipients = (await MessageService.GetRecipients(userName)).ToList();
                 contacts = (await MessageService.GetContacts(userName)).ToList();
-                scheduled = (await MessageService.GetScheduledMessages(userName)).ToList();
+                foreach (var r in recipients)
+                {
+                    var conv = (await MessageService.GetConversation(userName, r)).ToList();
+                    if (conv.Any())
+                    {
+                        lastMessages[r] = conv.Last().Body;
+                    }
+                }
             }
             isLoaded = true;
             StateHasChanged();
@@ -125,47 +161,27 @@ else
         newMessage.Recipient = recipient;
     }
 
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(newMessage.Body))
+        {
+            await SendAsync();
+        }
+    }
+
     private async Task SendAsync()
     {
         newMessage.Sender = userName!;
-        if (scheduleTime.HasValue && scheduleTime.Value > DateTime.UtcNow)
+        await MessageService.SendMessage(newMessage);
+        conversation.Add(new MessageModel
         {
-            var sched = new ScheduledMessageModel
-            {
-                Sender = userName!,
-                SenderName = newMessage.SenderName,
-                SenderDepartment = newMessage.SenderDepartment,
-                Recipient = newMessage.Recipient,
-                Body = newMessage.Body,
-                ScheduledFor = scheduleTime.Value
-            };
-            await MessageService.ScheduleMessage(sched);
-            scheduled = (await MessageService.GetScheduledMessages(userName!)).ToList();
-        }
-        else
-        {
-            await MessageService.SendMessage(newMessage);
-            conversation = (await MessageService.GetConversation(userName!, newMessage.Recipient)).ToList();
-            if (!recipients.Contains(newMessage.Recipient))
-            {
-                recipients.Add(newMessage.Recipient);
-            }
-        }
+            Sender = userName!,
+            Recipient = newMessage.Recipient,
+            Body = newMessage.Body,
+            Direction = "Sent",
+            Timestamp = DateTime.UtcNow
+        });
+        lastMessages[newMessage.Recipient] = newMessage.Body;
         newMessage = new MessageModel { Recipient = selectedRecipient ?? string.Empty };
-        scheduleTime = null;
-    }
-
-    private async Task AddContact()
-    {
-        newContact.Owner = userName!;
-        await MessageService.SaveContact(newContact);
-        contacts = (await MessageService.GetContacts(userName!)).ToList();
-        newContact = new ContactModel();
-    }
-
-    private async Task CancelSchedule(int id)
-    {
-        await MessageService.CancelScheduledMessage(id, userName!);
-        scheduled = (await MessageService.GetScheduledMessages(userName!)).ToList();
     }
 }

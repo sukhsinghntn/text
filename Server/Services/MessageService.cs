@@ -128,6 +128,17 @@ namespace NDAProcesses.Server.Services
             await _context.SaveChangesAsync();
         }
 
+        public async Task DeleteContact(int id, string userName)
+        {
+            await _context.Database.EnsureCreatedAsync();
+            var contact = await _context.Contacts.FirstOrDefaultAsync(c => c.Id == id && c.Owner == userName);
+            if (contact != null)
+            {
+                _context.Contacts.Remove(contact);
+                await _context.SaveChangesAsync();
+            }
+        }
+
         public async Task ScheduleMessage(ScheduledMessageModel message)
         {
             await _context.Database.EnsureCreatedAsync();

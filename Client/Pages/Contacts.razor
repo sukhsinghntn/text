@@ -33,9 +33,8 @@ else
                     @("+1" + contact.PhoneNumber)
                 </Template>
                 <EditTemplate Context="contact">
-                    <RadzenTextBox @bind-Value="contact.PhoneNumber" Name="Phone" Mask="+1 (000) 000-0000" Style="width:100%" />
+                    <RadzenMaskedTextBox @bind-Value="contact.PhoneNumber" Name="Phone" Mask="(000) 000-0000" Style="width:100%" />
                     <RadzenRequiredValidator Component="Phone" Text="Phone is required" Popup="true" />
-                    <RadzenRegularExpressionValidator Component="Phone" Pattern="^\\+1 \\([0-9]{3}\\) [0-9]{3}-[0-9]{4}$" Text="Phone must be 10 digits" Popup="true" />
                 </EditTemplate>
             </RadzenDataGridColumn>
             <RadzenDataGridColumn Property="Notes" Title="Notes">
@@ -138,15 +137,22 @@ else
 
     async Task OnUpdateRow(ContactModel contact)
     {
-        await SaveContact(contact);
+        if (!await SaveContact(contact))
+        {
+            await grid!.EditRow(contact);
+        }
     }
 
     async Task OnCreateRow(ContactModel contact)
     {
-        await SaveContact(contact);
+        if (!await SaveContact(contact))
+        {
+            contacts.Remove(contact);
+            await grid!.CancelEditRow(contact);
+        }
     }
 
-    async Task SaveContact(ContactModel contact)
+    async Task<bool> SaveContact(ContactModel contact)
     {
         try
         {
@@ -158,7 +164,7 @@ else
             if (digits.Length != 10)
             {
                 NotificationService.Notify(NotificationSeverity.Error, "Error", "Phone number must be 10 digits");
-                return;
+                return false;
             }
             var toSave = new ContactModel
             {
@@ -170,10 +176,12 @@ else
             await MessageService.SaveContact(toSave);
             contacts = (await LoadContacts()).ToList();
             NotificationService.Notify(NotificationSeverity.Success, "Contact saved");
+            return true;
         }
         catch (Exception ex)
         {
             NotificationService.Notify(NotificationSeverity.Error, "Error", ex.Message);
         }
+        return false;
     }
 }

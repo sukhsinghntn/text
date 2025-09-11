@@ -54,7 +54,7 @@ else
                 }
             </div>
             <div class="input-bar">
-                <input id="messageInput" class="message-input" placeholder="Type a message" @bind="messageBody" @bind:event="oninput" @onkeydown="HandleKeyDown" />
+                <input id="messageInput" class="message-input" placeholder="Type a message (your name and department will be sent automatically)" @bind="messageBody" @bind:event="oninput" @onkeydown="HandleKeyDown" />
                 <RadzenButton Icon="send" Click="@SendAsync" Disabled="@(!CanSend)" Style="margin-left:5px" />
             </div>
         </section>
@@ -271,7 +271,7 @@ else
 
         var messages = (await MessageService.GetMessages(userName)).ToList();
         recipients = messages
-            .Select(m => m.Sender == userName ? m.Recipient : m.Sender)
+            .Select(m => m.Direction == "Sent" ? m.Recipient : m.Sender)
             .Where(r => !string.IsNullOrEmpty(r))
             .Distinct()
             .ToList();
@@ -280,7 +280,7 @@ else
         foreach (var r in recipients)
         {
             var conv = messages
-                .Where(m => (m.Sender == userName && m.Recipient == r) || (m.Sender == r && m.Recipient == userName))
+                .Where(m => (m.Recipient == r && m.Direction == "Sent") || (m.Sender == r && m.Direction != "Sent"))
                 .OrderBy(m => m.Timestamp)
                 .ToList();
             if (conv.Any())

@@ -33,8 +33,9 @@ else
                     @("+1" + contact.PhoneNumber)
                 </Template>
                 <EditTemplate Context="contact">
-                    <RadzenTextBox @bind-Value="contact.PhoneNumber" Name="Phone" Style="width:100%" InputAttributes="@(new Dictionary<string,object>{{"maxlength","10"},{"pattern","[0-9]*"},{"inputmode","numeric"}})" />
-                    <RadzenRegularExpressionValidator Component="Phone" Pattern="^[0-9]{10}$" Text="Phone must be 10 digits" Popup="true" />
+                    <RadzenMaskedTextBox @bind-Value="contact.PhoneNumber" Name="Phone" Mask="+1 (000) 000-0000" Style="width:100%" />
+                    <RadzenRequiredValidator Component="Phone" Text="Phone is required" Popup="true" />
+                    <RadzenRegularExpressionValidator Component="Phone" Pattern="^\\+1 \\([0-9]{3}\\) [0-9]{3}-[0-9]{4}$" Text="Phone must be 10 digits" Popup="true" />
                 </EditTemplate>
             </RadzenDataGridColumn>
             <RadzenDataGridColumn Property="Notes" Title="Notes">
@@ -150,6 +151,10 @@ else
         try
         {
             var digits = new string((contact.PhoneNumber ?? string.Empty).Where(char.IsDigit).ToArray());
+            if (digits.Length == 11 && digits.StartsWith("1"))
+            {
+                digits = digits[1..];
+            }
             if (digits.Length != 10)
             {
                 NotificationService.Notify(NotificationSeverity.Error, "Error", "Phone number must be 10 digits");

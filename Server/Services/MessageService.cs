@@ -37,12 +37,15 @@ namespace NDAProcesses.Server.Services
             await _context.Database.EnsureCreatedAsync();
             await SyncInbox();
 
+            var user = await _userService.GetUserData(userName);
+            var dept = user?.Department ?? string.Empty;
+
             var sentRecipients = _context.Messages
-                .Where(m => m.Sender == userName)
+                .Where(m => m.SenderDepartment == dept)
                 .Select(m => m.Recipient);
 
             return await _context.Messages
-                .Where(m => m.Sender == userName || (sentRecipients.Contains(m.Sender) && m.Direction != "Sent"))
+                .Where(m => m.SenderDepartment == dept || (sentRecipients.Contains(m.Sender) && m.Direction != "Sent"))
                 .OrderBy(m => m.Timestamp)
                 .ToListAsync();
         }
@@ -52,9 +55,16 @@ namespace NDAProcesses.Server.Services
             await _context.Database.EnsureCreatedAsync();
             await SyncInbox();
 
+            var user = await _userService.GetUserData(userName);
+            var dept = user?.Department ?? string.Empty;
+
+            var sentRecipients = _context.Messages
+                .Where(m => m.SenderDepartment == dept)
+                .Select(m => m.Recipient);
+
             return await _context.Messages
-                .Where(m => (m.Sender == userName && m.Recipient == recipient) ||
-                            (m.Sender == recipient && m.Recipient == userName))
+                .Where(m => (m.SenderDepartment == dept && m.Recipient == recipient) ||
+                            (m.Sender == recipient && sentRecipients.Contains(m.Sender)))
                 .OrderBy(m => m.Timestamp)
                 .ToListAsync();
         }
@@ -62,9 +72,15 @@ namespace NDAProcesses.Server.Services
         public async Task<IEnumerable<string>> GetRecipients(string userName)
         {
             await _context.Database.EnsureCreatedAsync();
+            var user = await _userService.GetUserData(userName);
+            var dept = user?.Department ?? string.Empty;
+            var sentRecipients = _context.Messages
+                .Where(m => m.SenderDepartment == dept)
+                .Select(m => m.Recipient);
+
             return await _context.Messages
-                .Where(m => m.Sender == userName || m.Recipient == userName)
-                .Select(m => m.Sender == userName ? m.Recipient : m.Sender)
+                .Where(m => m.SenderDepartment == dept || (sentRecipients.Contains(m.Sender) && m.Direction != "Sent"))
+                .Select(m => m.Direction == "Sent" ? m.Recipient : m.Sender)
                 .Distinct()
                 .ToListAsync();
         }

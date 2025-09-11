@@ -33,7 +33,7 @@ else
                     @("+1" + contact.PhoneNumber)
                 </Template>
                 <EditTemplate Context="contact">
-                    <RadzenMaskedTextBox @bind-Value="contact.PhoneNumber" Name="Phone" Mask="(000) 000-0000" Style="width:100%" />
+                    <RadzenMask @bind-Value="contact.PhoneNumber" Name="Phone" Mask="(000) 000-0000" Style="width:100%" />
                     <RadzenRequiredValidator Component="Phone" Text="Phone is required" Popup="true" />
                 </EditTemplate>
             </RadzenDataGridColumn>
@@ -148,7 +148,7 @@ else
         if (!await SaveContact(contact))
         {
             contacts.Remove(contact);
-            await grid!.CancelEditRow(contact);
+            grid!.CancelEditRow(contact);
         }
     }
 

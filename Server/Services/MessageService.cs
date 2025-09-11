@@ -168,19 +168,33 @@ namespace NDAProcesses.Server.Services
             }
         }
 
-        // Normalizes phone numbers to +1XXXXXXXXXX format. When strict is true the input must contain exactly 10 digits.
+        // Normalizes phone numbers to +1XXXXXXXXXX format. When strict is true the input must
+        // contain exactly 10 digits, allowing an optional leading 1 country code.
         private static string NormalizePhone(string phone, bool strict = false)
         {
             if (string.IsNullOrWhiteSpace(phone))
                 return string.Empty;
+
             var digits = new string(phone.Where(char.IsDigit).ToArray());
+
+            // Strip an optional leading 1 (country code) so both "6617420018" and
+            // "+16617420018" are accepted as the same number.
+            if (digits.Length == 11 && digits.StartsWith("1"))
+            {
+                digits = digits[1..];
+            }
+
             if (strict && digits.Length != 10)
             {
                 throw new ArgumentException("Phone number must be exactly 10 digits");
             }
-            if (digits.Length == 10)
-                digits = "1" + digits;
-            return "+" + digits;
+
+            if (digits.Length != 10)
+            {
+                return string.Empty;
+            }
+
+            return "+1" + digits;
         }
 
         public async Task ScheduleMessage(ScheduledMessageModel message)

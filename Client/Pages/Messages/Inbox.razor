@@ -6,6 +6,7 @@
 @inject CookieHelper CookieHelper
 @inject NavigationManager NavigationManager
 @inject IMessageService MessageService
+@inject IJSRuntime JS
 @implements IDisposable
 
 <PageTitle>Messages</PageTitle>
@@ -255,6 +256,7 @@ else
         selectedRecipients = new List<string>();
         conversation.Clear();
         messageBody = string.Empty;
+        _ = ScrollToBottomAsync();
     }
 
     private async Task RefreshAsync()
@@ -285,10 +287,13 @@ else
         }
 
         StateHasChanged();
+        await ScrollToBottomAsync();
     }
 
     public void Dispose()
     {
         refreshTimer?.Dispose();
     }
+
+    private Task ScrollToBottomAsync() => JS.InvokeVoidAsync("scrollMessagesToBottom").AsTask();
 }

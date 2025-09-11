@@ -19,7 +19,7 @@ else if (string.IsNullOrEmpty(userName))
 }
 else
 {
-    <RadzenButton Text="Add Contact" Icon="add_circle" Click="@InsertRow" Style="margin-bottom:10px" Disabled="@(grid == null || grid.IsNewItemInEdit)" />
+    <RadzenButton Text="Add Contact" Icon="add_circle" Click="@InsertRow" Style="margin-bottom:10px" Disabled="@isInserting" />
     <RadzenDataGrid @ref="grid" Data="@contacts" TItem="ContactModel" EditMode="DataGridEditMode.Single" RowUpdate="@OnUpdateRow" RowCreate="@OnCreateRow" AllowPaging="true" PageSize="10">
         <Columns>
             <RadzenDataGridColumn Property="Name" Title="Name">
@@ -61,6 +61,7 @@ else
     private bool isLoaded;
     private List<ContactModel> contacts = new();
     RadzenDataGrid<ContactModel>? grid;
+    private bool isInserting;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -92,6 +93,7 @@ else
 
     async Task InsertRow()
     {
+        isInserting = true;
         var contact = new ContactModel();
         contacts.Add(contact);
         await grid!.InsertRow(contact);
@@ -109,11 +111,13 @@ else
         {
             contacts.Remove(contact);
         }
+        isInserting = false;
     }
 
     async Task SaveRow(ContactModel contact)
     {
         await grid!.UpdateRow(contact);
+        isInserting = false;
     }
 
     async Task DeleteRow(ContactModel contact)

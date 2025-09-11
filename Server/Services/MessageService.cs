@@ -80,7 +80,7 @@ namespace NDAProcesses.Server.Services
             message.SenderName = user?.DisplayName ?? string.Empty;
             message.SenderDepartment = user?.Department ?? string.Empty;
 
-            message.Recipient = NormalizePhone(message.Recipient);
+            message.Recipient = NormalizePhone(message.Recipient, strict: true);
 
             var signature = ($"{message.SenderName}{(string.IsNullOrWhiteSpace(message.SenderDepartment) ? string.Empty : " - " + message.SenderDepartment)}").Trim();
             if (!string.IsNullOrWhiteSpace(signature))
@@ -145,7 +145,7 @@ namespace NDAProcesses.Server.Services
         public async Task SaveContact(ContactModel contact)
         {
             await _context.Database.EnsureCreatedAsync();
-            contact.PhoneNumber = NormalizePhone(contact.PhoneNumber);
+            contact.PhoneNumber = NormalizePhone(contact.PhoneNumber, strict: true);
             if (contact.Id == 0)
             {
                 _context.Contacts.Add(contact);
@@ -168,14 +168,19 @@ namespace NDAProcesses.Server.Services
             }
         }
 
-        private static string NormalizePhone(string phone)
+        // Normalizes phone numbers to +1XXXXXXXXXX format. When strict is true the input must contain exactly 10 digits.
+        private static string NormalizePhone(string phone, bool strict = false)
         {
-            var digits = new string((phone ?? string.Empty).Where(char.IsDigit).ToArray());
-            if (digits.Length != 10)
+            if (string.IsNullOrWhiteSpace(phone))
+                return string.Empty;
+            var digits = new string(phone.Where(char.IsDigit).ToArray());
+            if (strict && digits.Length != 10)
             {
                 throw new ArgumentException("Phone number must be exactly 10 digits");
             }
-            return "+1" + digits;
+            if (digits.Length == 10)
+                digits = "1" + digits;
+            return "+" + digits;
         }
 
         public async Task ScheduleMessage(ScheduledMessageModel message)
@@ -354,17 +359,6 @@ namespace NDAProcesses.Server.Services
             return null;
         }
 
-        private static string NormalizePhone(string phone)
-        {
-            if (string.IsNullOrWhiteSpace(phone))
-                return string.Empty;
-            var digits = new string(phone.Where(char.IsDigit).ToArray());
-            if (string.IsNullOrEmpty(digits))
-                return string.Empty;
-            if (digits.Length == 10)
-                digits = "1" + digits;
-            return "+" + digits;
-        }
 
         private static string GetString(JsonElement m, params string[] names)
         {

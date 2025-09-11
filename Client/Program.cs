@@ -19,6 +19,7 @@ builder.Services.AddScoped(sp =>
 
 
 builder.Services.AddScoped<IUserService, UserServiceProxy>();
+builder.Services.AddScoped<IMessageService, MessageServiceProxy>();
 
 builder.Services.AddScoped<CookieHelper>();
 

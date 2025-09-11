@@ -46,7 +46,12 @@ namespace NDAProcesses.Client.Services
 
         public async Task SaveContact(ContactModel contact)
         {
-            await _httpClient.PostAsJsonAsync("api/messages/contacts", contact);
+            var response = await _httpClient.PostAsJsonAsync("api/messages/contacts", contact);
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                throw new ApplicationException(string.IsNullOrWhiteSpace(error) ? "Failed to save contact" : error);
+            }
         }
 
         public async Task DeleteContact(int id)

@@ -33,7 +33,7 @@ else
                     @("+1" + contact.PhoneNumber)
                 </Template>
                 <EditTemplate Context="contact">
-                    <RadzenMaskedTextBox @bind-Value="contact.PhoneNumber" Name="Phone" Mask="+1 (000) 000-0000" Style="width:100%" />
+                    <RadzenTextBox @bind-Value="contact.PhoneNumber" Name="Phone" Mask="+1 (000) 000-0000" Style="width:100%" />
                     <RadzenRequiredValidator Component="Phone" Text="Phone is required" Popup="true" />
                     <RadzenRegularExpressionValidator Component="Phone" Pattern="^\\+1 \\([0-9]{3}\\) [0-9]{3}-[0-9]{4}$" Text="Phone must be 10 digits" Popup="true" />
                 </EditTemplate>

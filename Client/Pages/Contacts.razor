@@ -33,7 +33,7 @@ else
                     @("+1" + contact.PhoneNumber)
                 </Template>
                 <EditTemplate Context="contact">
-                    <RadzenMask @bind-Value="contact.PhoneNumber" Name="Phone" Mask="(000) 000-0000" Style="width:100%" />
+                    <RadzenTextBox @bind-Value="contact.PhoneNumber" Name="Phone" Mask="(000) 000-0000" Style="width:100%" />
                     <RadzenRequiredValidator Component="Phone" Text="Phone is required" Popup="true" />
                 </EditTemplate>
             </RadzenDataGridColumn>

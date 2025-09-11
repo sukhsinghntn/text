@@ -1,5 +1,6 @@
 @inherits LayoutComponentBase
 <RadzenComponents />
+@inject IMessageService MessageService
 
 <!-- Define the overall layout of the page using RadzenLayout -->
 <RadzenLayout style="grid-template-areas: 'rz-sidebar rz-header' 'rz-sidebar rz-body';" class="rz-responsive-layout">
@@ -52,7 +53,7 @@
         <!-- Sidebar menu items -->
         <RadzenPanelMenu DisplayStyle="@(sidebarExpanded ? MenuItemDisplayStyle.IconAndText : MenuItemDisplayStyle.Icon)" ShowArrow="false" class="menu-items">
             <RadzenPanelMenuItem Text="Home" Path="" Icon="Home"/>
-            <RadzenPanelMenuItem Text="Messages" Path="messages" Icon="mail"/>
+            <RadzenPanelMenuItem Text="Messages" Icon="mail" Click="@NavigateToMessages"/>
             <RadzenPanelMenuItem Text="Contacts" Path="contacts" Icon="contacts"/>
         </RadzenPanelMenu>
 
@@ -80,6 +81,7 @@
     private string sidebarToggleIcon => sidebarExpanded ? "keyboard_arrow_left" : "keyboard_arrow_right";
     private UserModel ValidUser;
     private string username;
+    private string userId;
     private bool waitingforuserload = false;
     private string dynamicClass = "rz-mb-0";
     private string dynamicImageSize = "width: 96px; height: 48px;";
@@ -138,7 +140,7 @@
     // Fetches the username of the currently logged-in user from the cookie
     private async Task FetchUsernameAsync()
     {
-        string userId = await CookieHelper.LoginStatus();
+        userId = await CookieHelper.LoginStatus();
         if (string.IsNullOrEmpty(userId))
         {
             username = null;
@@ -149,5 +151,17 @@
             username = ValidUser.DisplayName;
         }
         waitingforuserload = true; // Mark the user data as loaded
+    }
+
+    private async Task NavigateToMessages(RadzenPanelMenuItemEventArgs args)
+    {
+        if (!string.IsNullOrEmpty(userId))
+        {
+            // Preload contacts and messages before navigation to reduce perceived load time
+            var contactsTask = MessageService.GetContacts();
+            var messagesTask = MessageService.GetMessages(userId);
+            await Task.WhenAll(contactsTask, messagesTask);
+        }
+        NavigationManager.NavigateTo("messages");
     }
 }

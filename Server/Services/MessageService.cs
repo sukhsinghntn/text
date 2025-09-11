@@ -30,11 +30,13 @@ namespace NDAProcesses.Server.Services
             _logger = logger;
             _userService = userService;
             _fileLogger = fileLogger;
+
+            // Ensure the database schema exists once at startup rather than on every request
+            _context.Database.EnsureCreated();
         }
 
         public async Task<IEnumerable<MessageModel>> GetMessages(string userName)
         {
-            await _context.Database.EnsureCreatedAsync();
             await SyncInbox();
 
             var user = await _userService.GetUserData(userName);
@@ -52,7 +54,6 @@ namespace NDAProcesses.Server.Services
 
         public async Task<IEnumerable<MessageModel>> GetConversation(string userName, string recipient)
         {
-            await _context.Database.EnsureCreatedAsync();
             await SyncInbox();
 
             var user = await _userService.GetUserData(userName);
@@ -71,7 +72,6 @@ namespace NDAProcesses.Server.Services
 
         public async Task<IEnumerable<string>> GetRecipients(string userName)
         {
-            await _context.Database.EnsureCreatedAsync();
             var user = await _userService.GetUserData(userName);
             var dept = user?.Department ?? string.Empty;
             var sentRecipients = _context.Messages
@@ -87,7 +87,6 @@ namespace NDAProcesses.Server.Services
 
         public async Task SendMessage(MessageModel message)
         {
-            await _context.Database.EnsureCreatedAsync();
             var baseUrl = _configuration["TextBee:BaseUrl"];
             var deviceId = _configuration["TextBee:DeviceId"];
             var apiKey = _configuration["TextBee:ApiKey"];
@@ -152,7 +151,6 @@ namespace NDAProcesses.Server.Services
 
         public async Task<IEnumerable<ContactModel>> GetContacts()
         {
-            await _context.Database.EnsureCreatedAsync();
             return await _context.Contacts
                 .OrderBy(c => c.Name)
                 .ToListAsync();
@@ -160,7 +158,6 @@ namespace NDAProcesses.Server.Services
 
         public async Task SaveContact(ContactModel contact)
         {
-            await _context.Database.EnsureCreatedAsync();
             contact.PhoneNumber = NormalizePhone(contact.PhoneNumber, strict: true);
             if (contact.Id == 0)
             {
@@ -175,7 +172,6 @@ namespace NDAProcesses.Server.Services
 
         public async Task DeleteContact(int id)
         {
-            await _context.Database.EnsureCreatedAsync();
             var contact = await _context.Contacts.FirstOrDefaultAsync(c => c.Id == id);
             if (contact != null)
             {
@@ -215,14 +211,12 @@ namespace NDAProcesses.Server.Services
 
         public async Task ScheduleMessage(ScheduledMessageModel message)
         {
-            await _context.Database.EnsureCreatedAsync();
             _context.ScheduledMessages.Add(message);
             await _context.SaveChangesAsync();
         }
 
         public async Task<IEnumerable<ScheduledMessageModel>> GetScheduledMessages(string userName)
         {
-            await _context.Database.EnsureCreatedAsync();
             return await _context.ScheduledMessages
                 .Where(m => m.Sender == userName && !m.Sent)
                 .OrderBy(m => m.ScheduledFor)
@@ -231,7 +225,6 @@ namespace NDAProcesses.Server.Services
 
         public async Task CancelScheduledMessage(int id, string userName)
         {
-            await _context.Database.EnsureCreatedAsync();
             var msg = await _context.ScheduledMessages
                 .FirstOrDefaultAsync(m => m.Id == id && m.Sender == userName && !m.Sent);
             if (msg != null)
@@ -243,7 +236,6 @@ namespace NDAProcesses.Server.Services
 
         public async Task SyncInbox()
         {
-            await _context.Database.EnsureCreatedAsync();
 
             var baseUrl = _configuration["TextBee:BaseUrl"];
             var deviceId = _configuration["TextBee:DeviceId"];

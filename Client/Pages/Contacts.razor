@@ -1,10 +1,11 @@
 @page "/contacts"
 @using Radzen
+@using System.Linq
 @inject CookieHelper CookieHelper
 @inject NavigationManager NavigationManager
 @inject IMessageService MessageService
-@inject DialogService DialogService
 @inject NotificationService NotificationService
+@inject DialogService DialogService
 
 <PageTitle>Contacts</PageTitle>
 
@@ -18,16 +19,38 @@ else if (string.IsNullOrEmpty(userName))
 }
 else
 {
-    <RadzenButton Text="Add Contact" Icon="add_circle" Click="@AddContact" Style="margin-bottom:10px" />
-    <RadzenDataGrid Data="@contacts" TItem="ContactModel" @ref="grid">
+    <RadzenButton Text="Add Contact" Icon="add_circle" Click="@InsertRow" Style="margin-bottom:10px" Disabled="@(grid == null || grid.IsNewItemInEdit)" />
+    <RadzenDataGrid @ref="grid" Data="@contacts" TItem="ContactModel" EditMode="DataGridEditMode.Single" RowUpdate="@OnUpdateRow" RowCreate="@OnCreateRow" AllowPaging="true" PageSize="10">
         <Columns>
-            <RadzenDataGridColumn TItem="ContactModel" Property="Name" Title="Name" />
-            <RadzenDataGridColumn TItem="ContactModel" Property="PhoneNumber" Title="Phone" />
-            <RadzenDataGridColumn TItem="ContactModel" Title="Actions">
+            <RadzenDataGridColumn Property="Name" Title="Name">
+                <EditTemplate Context="contact">
+                    <RadzenTextBox @bind-Value="contact.Name" Name="Name" Style="width:100%" />
+                    <RadzenRequiredValidator Component="Name" Text="Name is required" Popup="true" />
+                </EditTemplate>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn Property="PhoneNumber" Title="Phone">
                 <Template Context="contact">
-                    <RadzenButton Icon="edit" Size="ButtonSize.Small" Click="@(() => EditContact(contact))" Style="margin-right:5px" />
-                    <RadzenButton Icon="delete" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Danger" Click="@(() => OnDeleteContact(contact))" />
+                    +1@contact.PhoneNumber
                 </Template>
+                <EditTemplate Context="contact">
+                    <RadzenTextBox @bind-Value="contact.PhoneNumber" Name="Phone" Style="width:100%" InputAttributes="@(new Dictionary<string,object>{{"maxlength","10"}})" />
+                    <RadzenRegularExpressionValidator Component="Phone" Pattern="^[0-9]{10}$" Text="Phone must be 10 digits" Popup="true" />
+                </EditTemplate>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn Property="Notes" Title="Notes">
+                <EditTemplate Context="contact">
+                    <RadzenTextBox @bind-Value="contact.Notes" Style="width:100%" />
+                </EditTemplate>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn Context="contact" Filterable="false" Sortable="false" TextAlign="TextAlign.Right">
+                <Template Context="contact">
+                    <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small" Click="@(() => EditRow(contact))" />
+                    <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small" Style="margin-left:5px" Click="@(() => DeleteRow(contact))" />
+                </Template>
+                <EditTemplate Context="contact">
+                    <RadzenButton Icon="check" ButtonStyle="ButtonStyle.Success" Size="ButtonSize.Small" Click="@(() => SaveRow(contact))" />
+                    <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small" Style="margin-left:5px" Click="@(() => CancelEdit(contact))" />
+                </EditTemplate>
             </RadzenDataGridColumn>
         </Columns>
     </RadzenDataGrid>
@@ -50,50 +73,92 @@ else
             }
             else
             {
-                contacts = (await MessageService.GetContacts()).ToList();
+                contacts = (await LoadContacts()).ToList();
             }
             isLoaded = true;
             StateHasChanged();
         }
     }
 
-    async Task AddContact()
+    async Task<IEnumerable<ContactModel>> LoadContacts()
     {
-        var result = await DialogService.OpenAsync<ContactDialog>("Add Contact", new Dictionary<string, object>
+        var list = await MessageService.GetContacts();
+        return list.Select(c =>
         {
-            { "Contact", new ContactModel() }
+            c.PhoneNumber = c.PhoneNumber.StartsWith("+1") ? c.PhoneNumber.Substring(2) : c.PhoneNumber;
+            return c;
         });
-        if (result is ContactModel contact)
+    }
+
+    async Task InsertRow()
+    {
+        var contact = new ContactModel();
+        contacts.Add(contact);
+        await grid!.InsertRow(contact);
+    }
+
+    async Task EditRow(ContactModel contact)
+    {
+        await grid!.EditRow(contact);
+    }
+
+    void CancelEdit(ContactModel contact)
+    {
+        grid!.CancelEditRow(contact);
+        if (contact.Id == 0)
         {
-            await MessageService.SaveContact(contact);
-            contacts = (await MessageService.GetContacts()).ToList();
-            NotificationService.Notify(NotificationSeverity.Success, "Contact added");
+            contacts.Remove(contact);
         }
     }
 
-    async Task EditContact(ContactModel contact)
+    async Task SaveRow(ContactModel contact)
     {
-        var result = await DialogService.OpenAsync<ContactDialog>("Edit Contact", new Dictionary<string, object>
-        {
-            { "Contact", contact }
-        });
-        if (result is ContactModel updated)
-        {
-            await MessageService.SaveContact(updated);
-            contacts = (await MessageService.GetContacts()).ToList();
-            NotificationService.Notify(NotificationSeverity.Success, "Contact updated");
-        }
+        await grid!.UpdateRow(contact);
     }
 
-    async Task OnDeleteContact(ContactModel contact)
+    async Task DeleteRow(ContactModel contact)
     {
-        bool? confirm = await DialogService.Confirm("Are you sure you want to delete this contact?", "Delete Contact");
+        bool? confirm = await DialogService.Confirm("Delete this contact?", "Confirm");
         if (confirm == true)
         {
-            await MessageService.DeleteContact(contact.Id);
+            if (contact.Id != 0)
+            {
+                await MessageService.DeleteContact(contact.Id);
+            }
             contacts.Remove(contact);
-            NotificationService.Notify(NotificationSeverity.Success, "Contact deleted");
             await grid!.Reload();
+            NotificationService.Notify(NotificationSeverity.Success, "Contact deleted");
+        }
+    }
+
+    async Task OnUpdateRow(ContactModel contact)
+    {
+        await SaveContact(contact);
+    }
+
+    async Task OnCreateRow(ContactModel contact)
+    {
+        await SaveContact(contact);
+    }
+
+    async Task SaveContact(ContactModel contact)
+    {
+        try
+        {
+            var toSave = new ContactModel
+            {
+                Id = contact.Id,
+                Name = contact.Name,
+                PhoneNumber = "+1" + contact.PhoneNumber,
+                Notes = contact.Notes
+            };
+            await MessageService.SaveContact(toSave);
+            contacts = (await LoadContacts()).ToList();
+            NotificationService.Notify(NotificationSeverity.Success, "Contact saved");
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Error", ex.Message);
         }
     }
 }

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using NDAProcesses.Shared.Models;
 using NDAProcesses.Shared.Services;
+using System;
 
 namespace NDAProcesses.Server.Controllers
 {
@@ -42,8 +43,15 @@ namespace NDAProcesses.Server.Controllers
         [HttpPost("contacts")]
         public async Task<IActionResult> SaveContact([FromBody] ContactModel contact)
         {
-            await _messageService.SaveContact(contact);
-            return Ok();
+            try
+            {
+                await _messageService.SaveContact(contact);
+                return Ok();
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         [HttpDelete("contacts/{id}")]

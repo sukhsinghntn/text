@@ -145,6 +145,7 @@ namespace NDAProcesses.Server.Services
         public async Task SaveContact(ContactModel contact)
         {
             await _context.Database.EnsureCreatedAsync();
+            contact.PhoneNumber = NormalizePhone(contact.PhoneNumber);
             if (contact.Id == 0)
             {
                 _context.Contacts.Add(contact);
@@ -165,6 +166,16 @@ namespace NDAProcesses.Server.Services
                 _context.Contacts.Remove(contact);
                 await _context.SaveChangesAsync();
             }
+        }
+
+        private static string NormalizePhone(string phone)
+        {
+            var digits = new string((phone ?? string.Empty).Where(char.IsDigit).ToArray());
+            if (digits.Length != 10)
+            {
+                throw new ArgumentException("Phone number must be exactly 10 digits");
+            }
+            return "+1" + digits;
         }
 
         public async Task ScheduleMessage(ScheduledMessageModel message)

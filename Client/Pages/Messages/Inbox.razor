@@ -99,14 +99,15 @@ else
     cursor: pointer;
     border-bottom: 1px solid #eee;
     color: #fff;
-    min-height: 72px;
+    min-height: 64px;
 }
 .recipient.active {
     background: #2a2a2a;
 }
 .avatar {
-    width: 40px;
-    height: 40px;
+    width: 48px;
+    height: 48px;
+    flex: 0 0 48px;
     border-radius: 50%;
     background: #007bff;
     color: #fff;
@@ -115,6 +116,7 @@ else
     justify-content: center;
     margin-right: 10px;
     font-weight: bold;
+    font-size: 1.25rem;
 }
 .top-line {
     display: flex;
@@ -337,8 +339,7 @@ else
             Body = body
         }));
         await Task.WhenAll(tasks);
-
-        await RefreshAsync();
+        // periodic refresh timer will pull the server state; no immediate refresh to avoid flicker
     }
 
     private void StartNewChat()

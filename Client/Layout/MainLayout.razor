@@ -149,19 +149,13 @@
         {
             ValidUser = await UserService.GetUserData(userId);
             username = ValidUser.DisplayName;
+            await MessageService.PreloadAsync(userId);
         }
         waitingforuserload = true; // Mark the user data as loaded
     }
 
-    private async Task NavigateToMessages()
+    private void NavigateToMessages()
     {
-        if (!string.IsNullOrEmpty(userId))
-        {
-            // Preload contacts and messages before navigation to reduce perceived load time
-            var contactsTask = MessageService.GetContacts();
-            var messagesTask = MessageService.GetMessages(userId);
-            await Task.WhenAll(contactsTask, messagesTask);
-        }
         NavigationManager.NavigateTo("messages");
     }
 }

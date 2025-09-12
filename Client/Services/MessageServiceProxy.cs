@@ -9,6 +9,9 @@ namespace NDAProcesses.Client.Services
     public class MessageServiceProxy : IMessageService
     {
         private readonly HttpClient _httpClient;
+        private List<ContactModel>? _contacts;
+        private readonly Dictionary<string, List<MessageModel>> _messages = new();
+        private readonly Dictionary<string, Dictionary<string, DateTime>> _readStates = new();
 
         public MessageServiceProxy(HttpClient httpClient)
         {
@@ -17,8 +20,14 @@ namespace NDAProcesses.Client.Services
 
         public async Task<IEnumerable<MessageModel>> GetMessages(string userName)
         {
-            return await _httpClient.GetFromJsonAsync<IEnumerable<MessageModel>>($"api/messages/{userName}")
+            if (_messages.TryGetValue(userName, out var cached))
+                return cached;
+
+            var data = await _httpClient.GetFromJsonAsync<IEnumerable<MessageModel>>($"api/messages/{userName}")
                 ?? Enumerable.Empty<MessageModel>();
+            var list = data.ToList();
+            _messages[userName] = list;
+            return list;
         }
 
         public async Task<IEnumerable<MessageModel>> GetConversation(string userName, string recipient)
@@ -41,12 +50,18 @@ namespace NDAProcesses.Client.Services
                 var error = await response.Content.ReadAsStringAsync();
                 throw new ApplicationException(string.IsNullOrWhiteSpace(error) ? "Failed to send message" : error);
             }
+            _messages.Remove(message.Sender);
         }
 
         public async Task<IEnumerable<ContactModel>> GetContacts()
         {
-            return await _httpClient.GetFromJsonAsync<IEnumerable<ContactModel>>("api/messages/contacts")
+            if (_contacts != null)
+                return _contacts;
+
+            var data = await _httpClient.GetFromJsonAsync<IEnumerable<ContactModel>>("api/messages/contacts")
                 ?? Enumerable.Empty<ContactModel>();
+            _contacts = data.ToList();
+            return _contacts;
         }
 
         public async Task SaveContact(ContactModel contact)
@@ -57,11 +72,13 @@ namespace NDAProcesses.Client.Services
                 var error = await response.Content.ReadAsStringAsync();
                 throw new ApplicationException(string.IsNullOrWhiteSpace(error) ? "Failed to save contact" : error);
             }
+            _contacts = null;
         }
 
         public async Task DeleteContact(int id)
         {
             await _httpClient.DeleteAsync($"api/messages/contacts/{id}");
+            _contacts = null;
         }
 
         public async Task ScheduleMessage(ScheduledMessageModel message)
@@ -88,14 +105,33 @@ namespace NDAProcesses.Client.Services
 
         public async Task<Dictionary<string, DateTime>> GetReadStates(string userName)
         {
-            return await _httpClient.GetFromJsonAsync<Dictionary<string, DateTime>>($"api/messages/{userName}/readstates")
+            if (_readStates.TryGetValue(userName, out var cached))
+                return cached;
+
+            var data = await _httpClient.GetFromJsonAsync<Dictionary<string, DateTime>>($"api/messages/{userName}/readstates")
                 ?? new Dictionary<string, DateTime>();
+            _readStates[userName] = data;
+            return data;
         }
 
         public async Task MarkRead(string userName, string recipient, DateTime timestamp)
         {
             var payload = new { Recipient = recipient, Timestamp = timestamp };
             await _httpClient.PostAsJsonAsync($"api/messages/{userName}/read", payload);
+            if (_readStates.TryGetValue(userName, out var rs))
+                rs[recipient] = timestamp;
+        }
+
+        public async Task PreloadAsync(string userName)
+        {
+            var contactsTask = _httpClient.GetFromJsonAsync<IEnumerable<ContactModel>>("api/messages/contacts");
+            var messagesTask = _httpClient.GetFromJsonAsync<IEnumerable<MessageModel>>($"api/messages/{userName}");
+            var readTask = _httpClient.GetFromJsonAsync<Dictionary<string, DateTime>>($"api/messages/{userName}/readstates");
+            await Task.WhenAll(contactsTask, messagesTask, readTask);
+
+            _contacts = contactsTask.Result?.ToList() ?? new List<ContactModel>();
+            _messages[userName] = messagesTask.Result?.ToList() ?? new List<MessageModel>();
+            _readStates[userName] = readTask.Result ?? new Dictionary<string, DateTime>();
         }
     }
 }

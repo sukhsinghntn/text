@@ -17,5 +17,6 @@ namespace NDAProcesses.Shared.Services
         Task SyncInbox();
         Task<Dictionary<string, DateTime>> GetReadStates(string userName);
         Task MarkRead(string userName, string recipient, DateTime timestamp);
+        Task PreloadAsync(string userName);
     }
 }

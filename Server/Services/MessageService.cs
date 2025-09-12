@@ -463,5 +463,11 @@ namespace NDAProcesses.Server.Services
                 }
             }
         }
+
+        public Task PreloadAsync(string userName)
+        {
+            // Server side has no preloading requirements; data is queried on demand.
+            return Task.CompletedTask;
+        }
     }
 }

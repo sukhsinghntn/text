@@ -7,6 +7,7 @@ namespace NDAProcesses.Server.Data
     {
         public MessageContext(DbContextOptions<MessageContext> options) : base(options)
         {
+            Database.EnsureCreated();
         }
 
         public DbSet<MessageModel> Messages => Set<MessageModel>();

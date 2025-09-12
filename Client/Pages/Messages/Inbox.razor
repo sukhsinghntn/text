@@ -99,6 +99,7 @@ else
     cursor: pointer;
     border-bottom: 1px solid #eee;
     color: #fff;
+    min-height: 72px;
 }
 .recipient.active {
     background: #2a2a2a;
@@ -132,6 +133,9 @@ else
     display: flex;
     align-items: center;
     gap: 4px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
 }
 .badge {
     background: red;
@@ -173,6 +177,7 @@ else
 }
 .bubble {
     max-width: 70%;
+    min-width: 40%;
     padding: 8px 12px;
     border-radius: 12px;
     white-space: pre-line;
@@ -300,18 +305,40 @@ else
     private async Task SendAsync()
     {
         var body = messageBody;
+        var timestamp = DateTime.UtcNow;
+
+        // optimistic UI update so the bubble appears immediately
         foreach (var recipient in selectedRecipients)
         {
-            var msg = new MessageModel
+            var localMsg = new MessageModel
             {
                 Sender = userName!,
                 Recipient = recipient,
-                Body = body
+                Body = body,
+                Direction = "Sent",
+                Timestamp = timestamp
             };
-            await MessageService.SendMessage(msg);
+            allMessages.Add(localMsg);
+            if (recipient == selectedRecipient)
+            {
+                conversation.Add(localMsg);
+            }
         }
+
         messageBody = string.Empty;
-        await RefreshAsync(true);
+        StateHasChanged();
+        await ScrollToBottomAsync();
+
+        // send to server in the background
+        var tasks = selectedRecipients.Select(r => MessageService.SendMessage(new MessageModel
+        {
+            Sender = userName!,
+            Recipient = r,
+            Body = body
+        }));
+        await Task.WhenAll(tasks);
+
+        await RefreshAsync();
     }
 
     private void StartNewChat()

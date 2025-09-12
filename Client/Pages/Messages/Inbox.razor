@@ -50,6 +50,8 @@ else
             }
         </aside>
         <section class="conversation">
+            <RadzenAlert Visible="@isSending" Text="Sending..." Severity="AlertSeverity.Info"
+                         Style="position:fixed; top:1rem; right:1rem; z-index:1000" />
             @if (isNewChat)
             {
                 <RadzenDropDown Data="@contacts" TextProperty="Name" ValueProperty="PhoneNumber"
@@ -230,6 +232,7 @@ else
     private Dictionary<string, DateTime> lastRead = new();
     private bool isNewChat;
     private Timer? refreshTimer;
+    private bool isSending;
     private bool CanSend => selectedRecipients.Any() && !string.IsNullOrWhiteSpace(messageBody);
 
     private class RecipientMeta
@@ -339,6 +342,9 @@ else
         StateHasChanged();
         await ScrollToBottomAsync();
 
+        isSending = true;
+        StateHasChanged();
+
         // send to server and revert on failure
         foreach (var r in selectedRecipients)
         {
@@ -362,6 +368,9 @@ else
                 StateHasChanged();
             }
         }
+
+        isSending = false;
+        StateHasChanged();
         // periodic refresh timer will pull the server state; no immediate refresh to avoid flicker
     }
 

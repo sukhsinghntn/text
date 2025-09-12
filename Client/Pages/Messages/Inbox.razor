@@ -140,6 +140,9 @@ else
     display: flex;
     align-items: center;
     gap: 4px;
+}
+.preview {
+    flex: 1;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
@@ -425,9 +428,13 @@ else
             if (!lastRead.ContainsKey(g.Key))
                 lastRead[g.Key] = DateTime.MinValue;
 
+            var previewText = last.Body ?? string.Empty;
+            if (previewText.Length > 40)
+                previewText = previewText.Substring(0, 40) + "…";
+
             recipientMeta[g.Key] = new RecipientMeta
             {
-                Preview = last.Body,
+                Preview = previewText,
                 Timestamp = last.Timestamp,
                 Direction = last.Direction,
                 Unread = conv.Count(m => m.Direction != "Sent" && m.Timestamp > lastRead[g.Key])

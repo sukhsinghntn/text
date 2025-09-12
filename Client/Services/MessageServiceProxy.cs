@@ -35,7 +35,12 @@ namespace NDAProcesses.Client.Services
 
         public async Task SendMessage(MessageModel message)
         {
-            await _httpClient.PostAsJsonAsync("api/messages", message);
+            var response = await _httpClient.PostAsJsonAsync("api/messages", message);
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                throw new ApplicationException(string.IsNullOrWhiteSpace(error) ? "Failed to send message" : error);
+            }
         }
 
         public async Task<IEnumerable<ContactModel>> GetContacts()

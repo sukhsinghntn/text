@@ -8,6 +8,7 @@
 @inject NavigationManager NavigationManager
 @inject IMessageService MessageService
 @inject IJSRuntime JS
+@inject NotificationService NotificationService
 @implements IDisposable
 
 <PageTitle>Messages</PageTitle>
@@ -101,6 +102,9 @@ else
     color: #fff;
     min-height: 64px;
 }
+.info {
+    flex: 1;
+}
 .recipient.active {
     background: #2a2a2a;
 }
@@ -121,6 +125,7 @@ else
 .top-line {
     display: flex;
     justify-content: space-between;
+    width: 100%;
 }
 .top-line .name {
     font-weight: bold;
@@ -331,14 +336,29 @@ else
         StateHasChanged();
         await ScrollToBottomAsync();
 
-        // send to server in the background
-        var tasks = selectedRecipients.Select(r => MessageService.SendMessage(new MessageModel
+        // send to server and revert on failure
+        foreach (var r in selectedRecipients)
         {
-            Sender = userName!,
-            Recipient = r,
-            Body = body
-        }));
-        await Task.WhenAll(tasks);
+            try
+            {
+                await MessageService.SendMessage(new MessageModel
+                {
+                    Sender = userName!,
+                    Recipient = r,
+                    Body = body
+                });
+            }
+            catch (Exception ex)
+            {
+                allMessages.RemoveAll(m => m.Recipient == r && m.Timestamp == timestamp && m.Direction == "Sent");
+                if (selectedRecipient == r)
+                {
+                    conversation.RemoveAll(m => m.Recipient == r && m.Timestamp == timestamp && m.Direction == "Sent");
+                }
+                NotificationService.Notify(NotificationSeverity.Error, "Error", ex.Message);
+                StateHasChanged();
+            }
+        }
         // periodic refresh timer will pull the server state; no immediate refresh to avoid flicker
     }
 
@@ -357,9 +377,7 @@ else
         if (string.IsNullOrEmpty(userName))
             return;
 
-        DateTime? prevLast = null;
-        if (selectedRecipient != null && recipientMeta.TryGetValue(selectedRecipient, out var metaPrev))
-            prevLast = metaPrev.Timestamp;
+        int prevCount = conversation.Count;
 
         var messagesTask = MessageService.GetMessages(userName);
         var readTask = MessageService.GetReadStates(userName);
@@ -369,7 +387,8 @@ else
 
         if (selectedRecipient != null && recipientMeta.TryGetValue(selectedRecipient, out var meta))
         {
-            if (forceScroll || !prevLast.HasValue || meta.Timestamp > prevLast.Value)
+            bool newMessages = conversation.Count > prevCount;
+            if (forceScroll || newMessages)
                 await ScrollToBottomAsync();
 
             lastRead[selectedRecipient] = meta.Timestamp;

@@ -1,0 +1,473 @@
+@page "/messages"
+@using Microsoft.AspNetCore.Components.Web
+@using Radzen
+@using System.Linq
+@using System.Timers
+@using System.Threading.Tasks
+@inject CookieHelper CookieHelper
+@inject NavigationManager NavigationManager
+@inject IMessageService MessageService
+@inject IJSRuntime JS
+@inject NotificationService NotificationService
+@implements IDisposable
+
+<PageTitle>Messages</PageTitle>
+
+@if (!isLoaded)
+{
+    <p>Loading...</p>
+}
+else if (string.IsNullOrEmpty(userName))
+{
+    <div class="alert alert-warning">Please login to view messages.</div>
+}
+else
+{
+    <div class="chat-container">
+        <aside class="recipients">
+            <div class="new-chat" @onclick="StartNewChat"><span class="plus">+</span> New Message</div>
+            @foreach (var r in recipients)
+            {
+                var display = contacts.FirstOrDefault(c => c.PhoneNumber == r)?.Name ?? r;
+                var info = recipientMeta[r];
+                <div class="recipient @(r == selectedRecipient ? "active" : string.Empty)" @onclick="(() => LoadConversation(r))">
+                    <div class="avatar">@display.Substring(0,1)</div>
+                    <div class="info">
+                        <div class="top-line">
+                            <span class="name">@display</span>
+                            <span class="time">@info.Timestamp.ToLocalTime().ToString("g")</span>
+                        </div>
+                        <div class="bottom-line">
+                            <span class="direction">@GetDirectionIcon(info.Direction)</span>
+                            <span class="preview">@info.Preview</span>
+                            @if (info.Unread > 0)
+                            {
+                                <span class="badge">@info.Unread</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </aside>
+        <section class="conversation">
+            <RadzenAlert Visible="@isSending" Text="Sending..." Severity="AlertSeverity.Info" AlertStyle="AlertStyle.Light" Variant="Variant.Flat"
+                         Style="position:fixed; top:1rem; right:1rem; z-index:1000; display:inline-block; width:auto; padding:4px 8px" />
+            @if (isNewChat)
+            {
+                <RadzenDropDown Data="@contacts" TextProperty="Name" ValueProperty="PhoneNumber"
+                                TValue="IEnumerable<string>" Value="@selectedRecipients" ValueChanged="@OnRecipientsChange" Multiple="true"
+                                AllowClear="true" Placeholder="Select recipients" Style="margin:10px; width:calc(100% - 20px);" />
+            }
+            <div class="messages" id="messages">
+                @foreach (var m in conversation)
+                {
+                    <div class="message-group @(m.Direction == "Sent" ? "outgoing" : "incoming")">
+                        <div class="timestamp">@m.Timestamp.ToLocalTime().ToString("g")</div>
+                        <div class="bubble @(m.Direction == "Sent" ? "outgoing" : "incoming")">@m.Body</div>
+                    </div>
+                }
+            </div>
+            <div class="input-bar">
+                <input id="messageInput" class="message-input" placeholder="Type a message (your name and department will be sent automatically)" @bind="messageBody" @bind:event="oninput" @onkeydown="HandleKeyDown" />
+                <RadzenButton Icon="send" Click="@SendAsync" Disabled="@(!CanSend)" Style="margin-left:5px" />
+            </div>
+        </section>
+    </div>
+}
+
+<style>
+.chat-container {
+    display: flex;
+    height: 100vh;
+    width: 100%;
+}
+.recipients {
+    width: 30%;
+    border-right: 1px solid #ccc;
+    overflow-y: auto;
+    background: #333;
+}
+.new-chat {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+    font-weight: bold;
+}
+.new-chat .plus {
+    margin-right: 6px;
+}
+.recipient {
+    padding: 10px;
+    display: flex;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+    color: #fff;
+    min-height: 64px;
+}
+.info {
+    flex: 1;
+}
+.recipient.active {
+    background: #2a2a2a;
+}
+.avatar {
+    width: 48px;
+    height: 48px;
+    flex: 0 0 48px;
+    border-radius: 50%;
+    background: #007bff;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 10px;
+    font-weight: bold;
+    font-size: 1.25rem;
+}
+.top-line {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+}
+.top-line .name {
+    font-weight: bold;
+}
+.top-line .time {
+    font-size: 0.75rem;
+    color: #ccc;
+}
+.bottom-line {
+    font-size: 0.85rem;
+    color: #ccc;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.preview {
+    flex: 1;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+.badge {
+    background: red;
+    color: #fff;
+    border-radius: 10px;
+    padding: 0 6px;
+    font-size: 0.75rem;
+    margin-left: auto;
+}
+.direction {
+    font-weight: bold;
+}
+.conversation {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #222;
+}
+.messages {
+    flex: 1;
+    padding: 10px;
+    overflow-y: auto;
+}
+.message-group {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 8px;
+}
+.message-group.incoming {
+    align-items: flex-start;
+}
+.message-group.outgoing {
+    align-items: flex-end;
+}
+.timestamp {
+    font-size: 0.75rem;
+    color: #999;
+    margin-bottom: 2px;
+}
+.bubble {
+    max-width: 70%;
+    min-width: 40%;
+    padding: 8px 12px;
+    border-radius: 12px;
+    white-space: pre-line;
+}
+.bubble.incoming {
+    background: #444;
+    color: #fff;
+}
+.bubble.outgoing {
+    background: #0b93f6;
+    color: #fff;
+}
+.input-bar {
+    display: flex;
+    border-top: 1px solid #ccc;
+    padding: 10px;
+}
+.message-input {
+    flex: 1;
+    border: none;
+    background: #222;
+    color: #fff;
+}
+.message-input:focus {
+    outline: none;
+}
+
+@@media (max-width: 600px) {
+    .chat-container {
+        flex-direction: column;
+    }
+    .recipients {
+        width: 100%;
+        height: 40vh;
+        border-right: none;
+        border-bottom: 1px solid #ccc;
+    }
+}
+</style>
+
+@code {
+    private string? userName;
+    private bool isLoaded;
+    private List<string> recipients = new();
+    private List<MessageModel> conversation = new();
+    private List<MessageModel> allMessages = new();
+    private string? selectedRecipient;
+    private List<string> selectedRecipients = new();
+    private string messageBody = string.Empty;
+    private List<ContactModel> contacts = new();
+    private Dictionary<string, RecipientMeta> recipientMeta = new();
+    private Dictionary<string, DateTime> lastRead = new();
+    private bool isNewChat;
+    private Timer? refreshTimer;
+    private bool isSending;
+    private bool CanSend => selectedRecipients.Any() && !string.IsNullOrWhiteSpace(messageBody);
+
+    private class RecipientMeta
+    {
+        public string Preview { get; set; } = string.Empty;
+        public DateTime Timestamp { get; set; }
+        public string Direction { get; set; } = string.Empty;
+        public int Unread { get; set; }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            userName = await CookieHelper.LoginStatus();
+            if (string.IsNullOrEmpty(userName))
+            {
+                NavigationManager.NavigateTo("login?returnUrl=/messages", true);
+            }
+            else
+            {
+                var contactsTask = MessageService.GetContacts();
+                var messagesTask = MessageService.GetMessages(userName);
+                var readTask = MessageService.GetReadStates(userName);
+                await Task.WhenAll(contactsTask, messagesTask, readTask);
+                contacts = contactsTask.Result.ToList();
+                lastRead = readTask.Result;
+                ProcessMessages(messagesTask.Result.ToList());
+                await ScrollToBottomAsync();
+                refreshTimer = new Timer(5000);
+                refreshTimer.Elapsed += async (_, __) => await InvokeAsync(() => RefreshAsync());
+                refreshTimer.AutoReset = true;
+                refreshTimer.Start();
+            }
+            isLoaded = true;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadConversation(string recipient)
+    {
+        selectedRecipient = recipient;
+        selectedRecipients = new List<string> { recipient };
+        conversation = allMessages
+            .Where(m => (m.Direction == "Sent" && m.Recipient == recipient) || (m.Direction != "Sent" && m.Sender == recipient))
+            .OrderBy(m => m.Timestamp)
+            .ToList();
+        messageBody = string.Empty;
+        isNewChat = false;
+        if (recipientMeta.TryGetValue(recipient, out var meta))
+        {
+            lastRead[recipient] = meta.Timestamp;
+            meta.Unread = 0;
+            await MessageService.MarkRead(userName!, recipient, meta.Timestamp);
+        }
+        await ScrollToBottomAsync();
+        _ = RefreshAsync(true);
+    }
+
+    private async Task OnRecipientsChange(IEnumerable<string> values)
+    {
+        selectedRecipients = values.ToList();
+        if (selectedRecipients.Count == 1)
+        {
+            await LoadConversation(selectedRecipients[0]);
+            isNewChat = false;
+        }
+        else
+        {
+            selectedRecipient = null;
+            conversation.Clear();
+        }
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && CanSend)
+        {
+            await SendAsync();
+        }
+    }
+
+    private async Task SendAsync()
+    {
+        var body = messageBody;
+        var timestamp = DateTime.UtcNow;
+
+        // optimistic UI update so the bubble appears immediately
+        foreach (var recipient in selectedRecipients)
+        {
+            var localMsg = new MessageModel
+            {
+                Sender = userName!,
+                Recipient = recipient,
+                Body = body,
+                Direction = "Sent",
+                Timestamp = timestamp
+            };
+            allMessages.Add(localMsg);
+            if (recipient == selectedRecipient)
+            {
+                conversation.Add(localMsg);
+            }
+        }
+
+        messageBody = string.Empty;
+        StateHasChanged();
+        await ScrollToBottomAsync();
+
+        isSending = true;
+        StateHasChanged();
+
+        // send to server and revert on failure
+        foreach (var r in selectedRecipients)
+        {
+            try
+            {
+                await MessageService.SendMessage(new MessageModel
+                {
+                    Sender = userName!,
+                    Recipient = r,
+                    Body = body
+                });
+            }
+            catch (Exception ex)
+            {
+                allMessages.RemoveAll(m => m.Recipient == r && m.Timestamp == timestamp && m.Direction == "Sent");
+                if (selectedRecipient == r)
+                {
+                    conversation.RemoveAll(m => m.Recipient == r && m.Timestamp == timestamp && m.Direction == "Sent");
+                }
+                NotificationService.Notify(NotificationSeverity.Error, "Error", ex.Message);
+                StateHasChanged();
+            }
+        }
+
+        isSending = false;
+        StateHasChanged();
+        // periodic refresh timer will pull the server state; no immediate refresh to avoid flicker
+    }
+
+    private void StartNewChat()
+    {
+        isNewChat = true;
+        selectedRecipient = null;
+        selectedRecipients = new List<string>();
+        conversation.Clear();
+        messageBody = string.Empty;
+        _ = ScrollToBottomAsync();
+    }
+
+    private async Task RefreshAsync(bool forceScroll = false)
+    {
+        if (string.IsNullOrEmpty(userName))
+            return;
+
+        int prevCount = conversation.Count;
+
+        var messagesTask = MessageService.GetMessages(userName);
+        var readTask = MessageService.GetReadStates(userName);
+        await Task.WhenAll(messagesTask, readTask);
+        lastRead = readTask.Result;
+        ProcessMessages(messagesTask.Result.ToList());
+
+        if (selectedRecipient != null && recipientMeta.TryGetValue(selectedRecipient, out var meta))
+        {
+            bool newMessages = conversation.Count > prevCount;
+            if (forceScroll || newMessages)
+                await ScrollToBottomAsync();
+
+            lastRead[selectedRecipient] = meta.Timestamp;
+            meta.Unread = 0;
+            await MessageService.MarkRead(userName, selectedRecipient, meta.Timestamp);
+        }
+
+        StateHasChanged();
+    }
+
+    private string GetDirectionIcon(string direction) => direction == "Sent" ? "↗" : "↙";
+
+    public void Dispose()
+    {
+        refreshTimer?.Dispose();
+    }
+
+    private Task ScrollToBottomAsync() => JS.InvokeVoidAsync("scrollMessagesToBottom").AsTask();
+
+    private void ProcessMessages(List<MessageModel> messages)
+    {
+        allMessages = messages;
+
+        var grouped = messages
+            .Select(m => new { Key = m.Direction == "Sent" ? m.Recipient : m.Sender, Msg = m })
+            .Where(x => !string.IsNullOrEmpty(x.Key))
+            .GroupBy(x => x.Key);
+
+        recipientMeta.Clear();
+        foreach (var g in grouped)
+        {
+            var conv = g.Select(x => x.Msg).OrderBy(m => m.Timestamp).ToList();
+            var last = conv.Last();
+            if (!lastRead.ContainsKey(g.Key))
+                lastRead[g.Key] = DateTime.MinValue;
+
+            var previewText = last.Body ?? string.Empty;
+            if (previewText.Length > 40)
+                previewText = previewText.Substring(0, 40) + "…";
+
+            recipientMeta[g.Key] = new RecipientMeta
+            {
+                Preview = previewText,
+                Timestamp = last.Timestamp,
+                Direction = last.Direction,
+                Unread = conv.Count(m => m.Direction != "Sent" && m.Timestamp > lastRead[g.Key])
+            };
+
+            if (selectedRecipient == g.Key)
+                conversation = conv;
+        }
+
+        recipients = recipientMeta
+            .OrderByDescending(kvp => kvp.Value.Timestamp)
+            .Select(kvp => kvp.Key)
+            .ToList();
+    }
+}

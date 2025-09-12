@@ -238,8 +238,10 @@ else
             {
                 var contactsTask = MessageService.GetContacts();
                 var messagesTask = MessageService.GetMessages(userName);
-                await Task.WhenAll(contactsTask, messagesTask);
+                var readTask = MessageService.GetReadStates(userName);
+                await Task.WhenAll(contactsTask, messagesTask, readTask);
                 contacts = contactsTask.Result.ToList();
+                lastRead = readTask.Result;
                 ProcessMessages(messagesTask.Result.ToList());
                 await ScrollToBottomAsync();
                 refreshTimer = new Timer(5000);
@@ -256,9 +258,20 @@ else
     {
         selectedRecipient = recipient;
         selectedRecipients = new List<string> { recipient };
-        await RefreshAsync(true);
+        conversation = allMessages
+            .Where(m => (m.Direction == "Sent" && m.Recipient == recipient) || (m.Direction != "Sent" && m.Sender == recipient))
+            .OrderBy(m => m.Timestamp)
+            .ToList();
         messageBody = string.Empty;
         isNewChat = false;
+        if (recipientMeta.TryGetValue(recipient, out var meta))
+        {
+            lastRead[recipient] = meta.Timestamp;
+            meta.Unread = 0;
+            await MessageService.MarkRead(userName!, recipient, meta.Timestamp);
+        }
+        await ScrollToBottomAsync();
+        _ = RefreshAsync(true);
     }
 
     private async Task OnRecipientsChange(IEnumerable<string> values)
@@ -320,8 +333,11 @@ else
         if (selectedRecipient != null && recipientMeta.TryGetValue(selectedRecipient, out var metaPrev))
             prevLast = metaPrev.Timestamp;
 
-        var messages = (await MessageService.GetMessages(userName)).ToList();
-        ProcessMessages(messages);
+        var messagesTask = MessageService.GetMessages(userName);
+        var readTask = MessageService.GetReadStates(userName);
+        await Task.WhenAll(messagesTask, readTask);
+        lastRead = readTask.Result;
+        ProcessMessages(messagesTask.Result.ToList());
 
         if (selectedRecipient != null && recipientMeta.TryGetValue(selectedRecipient, out var meta))
         {
@@ -330,6 +346,7 @@ else
 
             lastRead[selectedRecipient] = meta.Timestamp;
             meta.Unread = 0;
+            await MessageService.MarkRead(userName, selectedRecipient, meta.Timestamp);
         }
 
         StateHasChanged();

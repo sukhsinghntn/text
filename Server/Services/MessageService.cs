@@ -85,6 +85,33 @@ namespace NDAProcesses.Server.Services
                 .ToListAsync();
         }
 
+        public async Task<Dictionary<string, DateTime>> GetReadStates(string userName)
+        {
+            var user = await _userService.GetUserData(userName);
+            var dept = user?.Department ?? string.Empty;
+            return await _context.ReadStates
+                .Where(r => r.Department == dept)
+                .ToDictionaryAsync(r => r.Recipient, r => r.LastRead);
+        }
+
+        public async Task MarkRead(string userName, string recipient, DateTime timestamp)
+        {
+            var user = await _userService.GetUserData(userName);
+            var dept = user?.Department ?? string.Empty;
+            var state = await _context.ReadStates.FirstOrDefaultAsync(r => r.Department == dept && r.Recipient == recipient);
+            if (state == null)
+            {
+                state = new ReadStateModel { Department = dept, Recipient = recipient, LastRead = timestamp };
+                _context.ReadStates.Add(state);
+            }
+            else if (timestamp > state.LastRead)
+            {
+                state.LastRead = timestamp;
+                _context.ReadStates.Update(state);
+            }
+            await _context.SaveChangesAsync();
+        }
+
         public async Task SendMessage(MessageModel message)
         {
             var baseUrl = _configuration["TextBee:BaseUrl"];

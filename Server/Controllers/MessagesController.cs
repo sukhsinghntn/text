@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using NDAProcesses.Shared.Models;
 using NDAProcesses.Shared.Services;
 using System;
+using System.Collections.Generic;
 
 namespace NDAProcesses.Server.Controllers
 {
@@ -78,6 +79,25 @@ namespace NDAProcesses.Server.Controllers
         public async Task<IActionResult> Cancel(string userName, int id)
         {
             await _messageService.CancelScheduledMessage(id, userName);
+            return Ok();
+        }
+
+        [HttpGet("{userName}/readstates")]
+        public async Task<Dictionary<string, DateTime>> GetReadStates(string userName)
+        {
+            return await _messageService.GetReadStates(userName);
+        }
+
+        public class ReadRequest
+        {
+            public string Recipient { get; set; } = string.Empty;
+            public DateTime Timestamp { get; set; }
+        }
+
+        [HttpPost("{userName}/read")]
+        public async Task<IActionResult> MarkRead(string userName, [FromBody] ReadRequest request)
+        {
+            await _messageService.MarkRead(userName, request.Recipient, request.Timestamp);
             return Ok();
         }
 

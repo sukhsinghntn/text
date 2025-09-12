@@ -80,5 +80,17 @@ namespace NDAProcesses.Client.Services
             // Inbox is automatically synced server-side
             return Task.CompletedTask;
         }
+
+        public async Task<Dictionary<string, DateTime>> GetReadStates(string userName)
+        {
+            return await _httpClient.GetFromJsonAsync<Dictionary<string, DateTime>>($"api/messages/{userName}/readstates")
+                ?? new Dictionary<string, DateTime>();
+        }
+
+        public async Task MarkRead(string userName, string recipient, DateTime timestamp)
+        {
+            var payload = new { Recipient = recipient, Timestamp = timestamp };
+            await _httpClient.PostAsJsonAsync($"api/messages/{userName}/read", payload);
+        }
     }
 }

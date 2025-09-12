@@ -50,8 +50,8 @@ else
             }
         </aside>
         <section class="conversation">
-            <RadzenAlert Visible="@isSending" Text="Sending..." Severity="AlertSeverity.Info"
-                         Style="position:fixed; top:1rem; right:1rem; z-index:1000" />
+            <RadzenAlert Visible="@isSending" Text="Sending..." Severity="AlertSeverity.Info" AlertStyle="AlertStyle.Light" Variant="Variant.Flat"
+                         Style="position:fixed; top:1rem; right:1rem; z-index:1000; display:inline-block; width:auto; padding:4px 8px" />
             @if (isNewChat)
             {
                 <RadzenDropDown Data="@contacts" TextProperty="Name" ValueProperty="PhoneNumber"
